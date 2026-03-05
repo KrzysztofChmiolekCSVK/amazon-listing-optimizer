@@ -23,6 +23,12 @@ const GROQ_MODELS = [
   { id: "meta-llama/llama-4-maverick-17b-128e-instruct", name: "Llama 4 Maverick", desc: "Najlepszy ale niski darmowy limit" },
 ];
 
+const GEMINI_MODELS = [
+  { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", desc: "Zalecany — szybki, dobra jakość, darmowy" },
+  { id: "gemini-2.5-flash-lite", name: "Gemini 2.5 Flash Lite", desc: "Najszybszy — lekki, darmowy" },
+  { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro", desc: "Najlepszy — najwyższa jakość" },
+];
+
 const BULLET_THEMES = [
   "Główna funkcja / kluczowa korzyść",
   "Jakość / materiały / trwałość",
@@ -348,28 +354,63 @@ function ListingPreview({ listing }) {
    SETTINGS PANEL
    ═══════════════════════════════════════════ */
 
-function SettingsPanel({ apiKey, setApiKey, model, setModel }) {
+function SettingsPanel({ provider, setProvider, apiKey, setApiKey, geminiKey, setGeminiKey, model, setModel }) {
   const [showKey, setShowKey] = useState(false);
+  const models = provider === "gemini" ? GEMINI_MODELS : GROQ_MODELS;
+
+  function switchProvider(p) {
+    setProvider(p);
+    if (p === "gemini" && !GEMINI_MODELS.find(m => m.id === model)) {
+      setModel("gemini-2.5-flash");
+    } else if (p === "groq" && !GROQ_MODELS.find(m => m.id === model)) {
+      setModel("meta-llama/llama-4-scout-17b-16e-instruct");
+    }
+  }
+
   return (
     <Card style={{ marginBottom: 20 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
         <span style={{ fontSize: 20 }}>⚙️</span>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: S.text }}>Ustawienia AI (Groq)</div>
-          <div style={{ fontSize: 11, color: S.dim }}>
-            Darmowy klucz API z <a href="https://console.groq.com/keys" target="_blank" rel="noopener"
-              style={{ color: S.accent, textDecoration: "none" }}>console.groq.com/keys</a>
-          </div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: S.text }}>Ustawienia AI</div>
+          <div style={{ fontSize: 11, color: S.dim }}>Wybierz providera i model</div>
         </div>
       </div>
 
+      {/* Provider toggle */}
       <div style={{ marginBottom: 16 }}>
         <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#c4c8d0", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-          Klucz API Groq
+          Provider
         </label>
         <div style={{ display: "flex", gap: 8 }}>
-          <input value={apiKey} onChange={e => setApiKey(e.target.value)}
-            type={showKey ? "text" : "password"} placeholder="gsk_..."
+          {[
+            { id: "groq", name: "Groq", desc: "Llama 4, Qwen, GPT-OSS", icon: "⚡" },
+            { id: "gemini", name: "Google Gemini", desc: "Gemini 2.5 Flash/Pro", icon: "💎" },
+          ].map(p => (
+            <button key={p.id} onClick={() => switchProvider(p.id)} style={{
+              padding: "10px 16px", borderRadius: 8, flex: 1,
+              border: provider === p.id ? `2px solid ${S.accent}` : `1px solid ${S.border}`,
+              background: provider === p.id ? "#ff990015" : S.input,
+              color: provider === p.id ? S.accent : S.muted,
+              cursor: "pointer", fontSize: 13, fontFamily: S.font, textAlign: "left",
+            }}>
+              <div style={{ fontWeight: 700 }}>{p.icon} {p.name}</div>
+              <div style={{ fontSize: 10, marginTop: 2, color: S.dim }}>{p.desc}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* API Key */}
+      <div style={{ marginBottom: 16 }}>
+        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#c4c8d0", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          {provider === "gemini" ? "Klucz API Google Gemini" : "Klucz API Groq"}
+        </label>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input value={provider === "gemini" ? geminiKey : apiKey}
+            onChange={e => provider === "gemini" ? setGeminiKey(e.target.value) : setApiKey(e.target.value)}
+            type={showKey ? "text" : "password"}
+            placeholder={provider === "gemini" ? "AIza..." : "gsk_..."}
             style={{
               flex: 1, padding: "12px 14px", background: S.input, border: `1px solid ${S.border}`,
               borderRadius: 8, color: S.text, fontSize: 14, fontFamily: S.mono, outline: "none", boxSizing: "border-box",
@@ -380,16 +421,20 @@ function SettingsPanel({ apiKey, setApiKey, model, setModel }) {
           }}>{showKey ? "🙈" : "👁"}</button>
         </div>
         <div style={{ fontSize: 11, color: S.dim, marginTop: 4 }}>
-          Klucz przechowywany wyłącznie w przeglądarce. Nigdy nie jest wysyłany na nasz serwer.
+          {provider === "gemini"
+            ? <>Darmowy klucz z <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener" style={{ color: S.accent, textDecoration: "none" }}>aistudio.google.com/api-keys</a></>
+            : <>Darmowy klucz z <a href="https://console.groq.com/keys" target="_blank" rel="noopener" style={{ color: S.accent, textDecoration: "none" }}>console.groq.com/keys</a></>
+          }
         </div>
       </div>
 
+      {/* Model selection */}
       <div>
         <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#c4c8d0", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
           Model
         </label>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {GROQ_MODELS.map(m => (
+          {models.map(m => (
             <button key={m.id} onClick={() => setModel(m.id)} style={{
               padding: "8px 14px", borderRadius: 8,
               border: model === m.id ? `2px solid ${S.accent}` : `1px solid ${S.border}`,
@@ -411,7 +456,7 @@ function SettingsPanel({ apiKey, setApiKey, model, setModel }) {
    AI GENERATE PANEL
    ═══════════════════════════════════════════ */
 
-function AIGeneratePanel({ listing, setListing, marketplace, apiKey, model, btg, selectedCategory }) {
+function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, geminiKey, model, btg, selectedCategory }) {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [productInfo, setProductInfo] = useState("");
@@ -419,21 +464,35 @@ function AIGeneratePanel({ listing, setListing, marketplace, apiKey, model, btg,
   const [secondaryKeywords, setSecondaryKeywords] = useState("");
   const [error, setError] = useState("");
 
-  async function callGroq(messages) {
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-      body: JSON.stringify({
+  async function callAI(messages) {
+    let url, headers, body;
+
+    if (provider === "gemini") {
+      url = `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`;
+      headers = { "Content-Type": "application/json", "x-goog-api-key": geminiKey };
+      body = {
+        model: model,
+        messages: messages,
+        temperature: 0.7,
+        max_tokens: 3000,
+      };
+    } else {
+      url = "https://api.groq.com/openai/v1/chat/completions";
+      headers = { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` };
+      body = {
         model: model,
         messages: messages,
         temperature: 0.7,
         max_tokens: 3000,
         response_format: { type: "json_object" },
-      }),
-    });
+      };
+    }
+
+    const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
-      throw new Error(errData?.error?.message || `Błąd HTTP ${res.status}`);
+      const errMsg = errData?.error?.message || errData?.error?.status || `Błąd HTTP ${res.status}`;
+      throw new Error(errMsg);
     }
     const data = await res.json();
     const text = data.choices?.[0]?.message?.content || "";
@@ -540,7 +599,8 @@ FINAL CHECK before responding:
 
   async function generate() {
     if (!productInfo.trim()) return setError("Najpierw opisz swój produkt.");
-    if (!apiKey.trim()) return setError("Wpisz klucz API Groq w ustawieniach powyżej.");
+    const activeKey = provider === "gemini" ? geminiKey : apiKey;
+    if (!activeKey.trim()) return setError(`Wpisz klucz API ${provider === "gemini" ? "Gemini" : "Groq"} w zakładce ⚙️ Ustawienia.`);
     if (!marketplace) return setError("Wybierz marketplace.");
     setError("");
     setLoading(true);
@@ -551,7 +611,7 @@ FINAL CHECK before responding:
       const catInfo = selectedCategory && btg?.category_attrs[selectedCategory];
       const prompt = buildPrompt(mp, catInfo);
 
-      let parsed = await callGroq([{ role: "user", content: prompt }]);
+      let parsed = await callAI([{ role: "user", content: prompt }]);
 
       // Auto-validation: check if listing needs improvement
       const titleLen = (parsed.title || "").length;
@@ -580,7 +640,7 @@ For backend keywords: brainstorm ALL possible synonyms, alternate names, related
 Respond ONLY with the improved JSON, same format:
 {"title":"...","bullet1":"...","bullet2":"...","bullet3":"...","bullet4":"...","bullet5":"...","description":"...","backendKeywords":"..."}`;
 
-        parsed = await callGroq([
+        parsed = await callAI([
           { role: "user", content: prompt },
           { role: "assistant", content: JSON.stringify(parsed) },
           { role: "user", content: refinementPrompt },
@@ -738,7 +798,9 @@ function ManualEditor({ listing, setListing }) {
 export default function App() {
   const [tab, setTab] = useState("generate");
   const [marketplace, setMarketplace] = useState("DE");
+  const [provider, setProvider] = useState("groq");
   const [apiKey, setApiKey] = useState("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");
+  const [geminiKey, setGeminiKey] = useState("AIzaSyAWwYa32pHDbxn3aAJc_UBXSP3tblwtpSM");
   const [model, setModel] = useState("meta-llama/llama-4-scout-17b-16e-instruct");
   const [btg, setBtg] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -812,13 +874,13 @@ export default function App() {
           {tab === "generate" && (
             <>
               <AIGeneratePanel listing={listing} setListing={setListing} marketplace={marketplace}
-                apiKey={apiKey} model={model} btg={btg} selectedCategory={selectedCategory} />
+                provider={provider} apiKey={apiKey} geminiKey={geminiKey} model={model} btg={btg} selectedCategory={selectedCategory} />
               {listing.title && <ListingPreview listing={listing} />}
             </>
           )}
           {tab === "manual" && <ManualEditor listing={listing} setListing={setListing} />}
           {tab === "preview" && <ListingPreview listing={listing} />}
-          {tab === "settings" && <SettingsPanel apiKey={apiKey} setApiKey={setApiKey} model={model} setModel={setModel} />}
+          {tab === "settings" && <SettingsPanel provider={provider} setProvider={setProvider} apiKey={apiKey} setApiKey={setApiKey} geminiKey={geminiKey} setGeminiKey={setGeminiKey} model={model} setModel={setModel} />}
         </div>
 
         {/* TIPS */}
