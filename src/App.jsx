@@ -680,7 +680,7 @@ function ManualEditor({ listing, setListing }) {
 export default function App() {
   const [tab, setTab] = useState("generate");
   const [marketplace, setMarketplace] = useState("DE");
-  const [apiKey, setApiKey] = useState("");
+  const [apiKey, setApiKey] = useState("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");
   const [model, setModel] = useState("llama-3.3-70b-versatile");
   const [btg, setBtg] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -753,7 +753,6 @@ export default function App() {
         <div style={{ animation: "fadeIn 0.3s ease" }}>
           {tab === "generate" && (
             <>
-              {!apiKey && <SettingsPanel apiKey={apiKey} setApiKey={setApiKey} model={model} setModel={setModel} />}
               <AIGeneratePanel listing={listing} setListing={setListing} marketplace={marketplace}
                 apiKey={apiKey} model={model} btg={btg} selectedCategory={selectedCategory} />
               {listing.title && <ListingPreview listing={listing} />}
