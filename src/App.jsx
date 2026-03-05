@@ -474,7 +474,7 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, g
         model: model,
         messages: messages,
         temperature: 0.7,
-        max_tokens: 3000,
+        max_tokens: 8192,
       };
     } else {
       url = "https://api.groq.com/openai/v1/chat/completions";
@@ -496,7 +496,29 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, g
     }
     const data = await res.json();
     const text = data.choices?.[0]?.message?.content || "";
-    return JSON.parse(text.replace(/```json|```/g, "").trim());
+    const clean = text.replace(/```json|```/g, "").trim();
+    try {
+      return JSON.parse(clean);
+    } catch (parseErr) {
+      // Try to fix truncated JSON by closing open strings and braces
+      let fixed = clean;
+      // If ends mid-string, close the string
+      const lastQuote = fixed.lastIndexOf('"');
+      const openBraces = (fixed.match(/{/g) || []).length;
+      const closeBraces = (fixed.match(/}/g) || []).length;
+      if (openBraces > closeBraces) {
+        // Close any open string
+        if (fixed.slice(lastQuote + 1).includes(':') && !fixed.trimEnd().endsWith('"')) {
+          fixed += '"';
+        }
+        for (let i = 0; i < openBraces - closeBraces; i++) fixed += '}';
+      }
+      try {
+        return JSON.parse(fixed);
+      } catch {
+        throw new Error("Model zwrócił nieprawidłowy JSON. Spróbuj ponownie lub zmień model w ⚙️ Ustawienia.");
+      }
+    }
   }
 
   function buildPrompt(mp, catInfo) {
