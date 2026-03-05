@@ -585,11 +585,49 @@ Respond ONLY with the improved JSON, same format:
         ]);
       }
 
-      // Post-processing: deduplicate backend keywords
+      // Post-processing: clean backend keywords thoroughly
       if (parsed.backendKeywords) {
-        const words = parsed.backendKeywords.toLowerCase().split(/\s+/).filter(Boolean);
-        const unique = [...new Set(words)];
-        parsed.backendKeywords = unique.join(" ");
+        // Collect all words from title, bullets, description (lowercased)
+        const listingText = [
+          parsed.title || "",
+          parsed.bullet1 || "", parsed.bullet2 || "", parsed.bullet3 || "",
+          parsed.bullet4 || "", parsed.bullet5 || "",
+          (parsed.description || "").replace(/<br\s*\/?>/gi, " "),
+        ].join(" ").toLowerCase();
+        
+        // Extract individual words from listing (strip punctuation)
+        const listingWords = new Set(
+          listingText.replace(/[–—\-,.:;()]/g, " ").split(/\s+/).filter(w => w.length > 1)
+        );
+        
+        // Process backend keywords
+        let bkWords = parsed.backendKeywords.toLowerCase()
+          .replace(/[,;.:]/g, " ")  // remove punctuation
+          .split(/\s+/)
+          .filter(Boolean);
+        
+        // 1. Remove duplicates
+        bkWords = [...new Set(bkWords)];
+        
+        // 2. Remove words that appear in listing text
+        bkWords = bkWords.filter(w => !listingWords.has(w) && w.length > 1);
+        
+        // 3. Remove common stop words
+        const stopWords = new Set(["und","oder","für","mit","von","den","dem","des","die","der","das","ein","eine","einen","einem","einer","zu","zur","zum","im","in","am","an","auf","aus","bei","bis","nach","über","unter","vor","entre","les","des","pour","avec","dans","une","sur","the","and","for","with","from","that","this","are","was","not","but","have","has","been","will","can","all","its","our","your","also","than","into","only","del","los","las","por","con","una","como","más","los","est","plus","que","qui","son","ses","ont","par","aux","ces","het","van","een","zijn","bij","nog","och","att","som","har","den","det","på","med","av","do","na","ze","od","po","za","się","jest","jak","lub","czy","nie","co","to","we","te","ma","tak","tu","tam","ten","ta","ich","ale","i","a","o","w","z","u","e","y","il","di","la","le","lo","da","al","no","si","se","en","el","de"]);
+        bkWords = bkWords.filter(w => !stopWords.has(w));
+        
+        // 4. Trim to 250 bytes
+        let result = [];
+        let currentBytes = 0;
+        for (const word of bkWords) {
+          const wordBytes = new TextEncoder().encode(word + " ").length;
+          if (currentBytes + wordBytes - 1 <= 250) {  // -1 because last word has no trailing space
+            result.push(word);
+            currentBytes += wordBytes;
+          }
+        }
+        
+        parsed.backendKeywords = result.join(" ");
       }
 
       setListing({
