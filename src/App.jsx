@@ -16,11 +16,11 @@ const MARKETPLACES = [
 ];
 
 const GROQ_MODELS = [
-  { id: "meta-llama/llama-4-maverick-17b-128e-instruct", name: "Llama 4 Maverick", desc: "Najlepszy wielojęzyczny — 400B parametrów" },
-  { id: "meta-llama/llama-4-scout-17b-16e-instruct", name: "Llama 4 Scout", desc: "Szybki — 460 tok/s, 12 języków EU" },
-  { id: "qwen/qwen3-32b", name: "Qwen 3 32B", desc: "Dobry z EU językami, 100+ języków" },
+  { id: "meta-llama/llama-4-scout-17b-16e-instruct", name: "Llama 4 Scout", desc: "Zalecany — szybki, 12 języków EU, darmowy" },
   { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B", desc: "Sprawdzony — dobra jakość ogólna" },
-  { id: "openai/gpt-oss-120b", name: "GPT-OSS 120B", desc: "Nowy OpenAI open-source 120B" },
+  { id: "qwen/qwen3-32b", name: "Qwen 3 32B", desc: "100+ języków, dobry z PL" },
+  { id: "openai/gpt-oss-120b", name: "GPT-OSS 120B", desc: "OpenAI open-source 120B" },
+  { id: "meta-llama/llama-4-maverick-17b-128e-instruct", name: "Llama 4 Maverick", desc: "Najlepszy ale niski darmowy limit" },
 ];
 
 const BULLET_THEMES = [
@@ -640,7 +640,14 @@ Respond ONLY with the improved JSON, same format:
       });
       setStatus("");
     } catch (e) {
-      setError("Generowanie nie powiodło się: " + e.message);
+      const msg = e.message || "";
+      if (msg.toLowerCase().includes("rate limit") || msg.includes("429") || msg.includes("TPM")) {
+        setError("Przekroczono limit tokenów dla tego modelu. Przełącz się na inny model w zakładce ⚙️ Ustawienia (np. Llama 3.3 70B lub Qwen 3 32B) i spróbuj ponownie.");
+      } else if (msg.toLowerCase().includes("decommissioned") || msg.toLowerCase().includes("not supported")) {
+        setError("Ten model został wycofany. Przełącz się na inny w zakładce ⚙️ Ustawienia.");
+      } else {
+        setError("Generowanie nie powiodło się: " + msg);
+      }
       setStatus("");
     } finally {
       setLoading(false);
@@ -732,7 +739,7 @@ export default function App() {
   const [tab, setTab] = useState("generate");
   const [marketplace, setMarketplace] = useState("DE");
   const [apiKey, setApiKey] = useState("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");
-  const [model, setModel] = useState("meta-llama/llama-4-maverick-17b-128e-instruct");
+  const [model, setModel] = useState("meta-llama/llama-4-scout-17b-16e-instruct");
   const [btg, setBtg] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [listing, setListing] = useState({
