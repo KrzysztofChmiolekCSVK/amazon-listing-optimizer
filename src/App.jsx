@@ -469,7 +469,7 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, g
 
     if (provider === "gemini") {
       url = `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`;
-      headers = { "Content-Type": "application/json", "x-goog-api-key": geminiKey };
+      headers = { "Content-Type": "application/json", "Authorization": `Bearer ${geminiKey}` };
       body = {
         model: model,
         messages: messages,
