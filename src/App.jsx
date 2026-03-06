@@ -791,7 +791,7 @@ Double-check: Is every word in your JSON response written in ${mp.langEn}? If no
       const issues = [];
       if (titleLen < 130) issues.push(`Title is only ${titleLen} chars — expand to 160-200 chars by adding more keywords and features.`);
       if (bulletsTotal > 1000) issues.push(`Bullets total is ${bulletsTotal} chars — this EXCEEDS the HARD LIMIT of 1000 characters. You MUST shorten the bullets to fit within 950-1000 characters total. Trim the longest bullets first while keeping key information.`);
-      else if (bulletsTotal < 900) issues.push(`Bullets total only ${bulletsTotal} chars — expand each bullet to 180-200 chars to reach 950-1000 total.`);
+      else if (bulletsTotal < 950) issues.push(`Bullets total only ${bulletsTotal} chars — this is TOO SHORT. Each bullet MUST be 190-200 characters. EXPAND every bullet with more specific details: exact dimensions, weight, materials, compatible models, certifications, use cases. Target: 950-1000 chars total.`);
       if (backendBytes < 235) issues.push(`Backend keywords only ${backendBytes}/250 bytes — you MUST add more words to reach 240-250 bytes. Brainstorm: synonyms, related categories, compatible products, use cases, materials, locations, actions. NO duplicates, NO words from title/bullets.`);
 
       if (issues.length > 0) {
@@ -952,14 +952,14 @@ Respond ONLY with valid JSON in ${mp.langEn}:
         const stopWords = new Set(["und","oder","für","mit","von","den","dem","des","die","der","das","ein","eine","einen","einem","einer","zu","zur","zum","im","in","am","an","auf","aus","bei","bis","nach","über","unter","vor","entre","les","des","pour","avec","dans","une","sur","the","and","for","with","from","that","this","are","was","not","but","have","has","been","will","can","all","its","our","your","also","than","into","only","del","los","las","por","con","una","como","más","los","est","plus","que","qui","son","ses","ont","par","aux","ces","het","van","een","zijn","bij","nog","och","att","som","har","den","det","på","med","av","do","na","ze","od","po","za","się","jest","jak","lub","czy","nie","co","to","we","te","ma","tak","tu","tam","ten","ta","ich","ale","i","a","o","w","z","u","e","y","il","di","la","le","lo","da","al","no","si","se","en","el","de"]);
         bkWords = bkWords.filter(w => !stopWords.has(w));
         
-        // 4. Trim to 250 bytes
+        // 4. Trim to exactly 250 bytes max
         let result = [];
-        let currentBytes = 0;
         for (const word of bkWords) {
-          const wordBytes = new TextEncoder().encode(word + " ").length;
-          if (currentBytes + wordBytes - 1 <= 250) {  // -1 because last word has no trailing space
-            result.push(word);
-            currentBytes += wordBytes;
+          result.push(word);
+          const joined = result.join(" ");
+          if (byteCount(joined) > 250) {
+            result.pop(); // remove the word that caused overflow
+            break;
           }
         }
         
@@ -1009,14 +1009,13 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
               const usedWords = new Set([...listingWords, ...result, ...stopWords]);
               const uniquePad = [...new Set(padWords)].filter(w => !usedWords.has(w) && w.length > 2);
               
-              // Add words until we hit ~248 bytes
-              let padCurrentBytes = byteCount(parsed.backendKeywords);
+              // Add words until we hit 250 bytes
               const padResult = [...result];
               for (const word of uniquePad) {
-                const wb = byteCount(word + " ");
-                if (padCurrentBytes + wb - 1 <= 250) {
-                  padResult.push(word);
-                  padCurrentBytes += wb;
+                padResult.push(word);
+                if (byteCount(padResult.join(" ")) > 250) {
+                  padResult.pop();
+                  break;
                 }
               }
               parsed.backendKeywords = padResult.join(" ");
