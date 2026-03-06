@@ -492,6 +492,12 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, g
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [productInfo, setProductInfo] = useState("");
+  const [referenceBullets, setReferenceBullets] = useState(null);
+
+  // Zresetuj wzorzec, jeśli użytkownik zmieni bazowy opis lub usunie załączniki
+  useEffect(() => {
+    setReferenceBullets(null);
+  }, [productInfo]);
   const [mainKeyword, setMainKeyword] = useState("");
   const [secondaryKeywords, setSecondaryKeywords] = useState("");
   const [error, setError] = useState("");
@@ -579,6 +585,7 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, g
       setImageData(prev => prev.filter(img => img.name !== file.name));
     }
     setUploadedFiles(prev => prev.filter((_, i) => i !== idx));
+    setReferenceBullets(null); // Reset reference when removing files
   }
 
   async function callAI(messages) {
@@ -656,6 +663,17 @@ ${imageData.length > 0 ? `\nIMAGES ATTACHED: ${imageData.length} image(s) showin
 
 YOUR TASK: Generate a FULLY optimized Amazon listing. Even if the product description is brief, use your knowledge to infer logical product features and create a comprehensive listing. Think like an experienced Amazon seller.
 
+${referenceBullets ? `
+═══════════════════════════════════════
+REFERENCE BULLET POINTS (CRITICAL TEMPLATE)
+═══════════════════════════════════════
+The user previously generated this listing for another marketplace. To maintain perfect cross-marketplace consistency, you MUST use the following 5 bullets as your exact template/foundation for the new bullets.
+Translate, adapt, and rewrite these into natural ${mp.langEn}, but keep the EXACT SAME meaning, features, order, and logical progression as these reference bullets:
+
+${referenceBullets.map((b, i) => `Bullet ${i + 1}: ${b}`).join("\n\n")}
+
+Do not invent new features that aren't in these reference bullets. Keep the same length and structure. You must still adhere to the general BULLET POINTS RULES below.
+` : ""}
 ═══════════════════════════════════════
 TITLE RULES (CRITICAL — follow exactly)
 ═══════════════════════════════════════
@@ -1100,6 +1118,7 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
         description: parsed.description || "",
         backendKeywords: parsed.backendKeywords || "",
       });
+      setReferenceBullets([parsed.bullet1||"", parsed.bullet2||"", parsed.bullet3||"", parsed.bullet4||"", parsed.bullet5||""]);
       setStatus("");
     } catch (e) {
       const msg = e.message || "";
