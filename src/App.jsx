@@ -642,7 +642,8 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, g
     return `You are a world-class Amazon listing optimizer specializing in European marketplaces. You have deep expertise in Amazon's A9/A10 algorithm, Rufus, and Cosmo AI systems.
 
 TARGET MARKETPLACE: ${mp.code} (${mp.langEn})
-CRITICAL: Write NATIVELY in ${mp.langEn}. Do NOT translate from English or any other language. Use natural, fluent phrasing that a native ${mp.langEn} speaker would use when shopping online.
+CRITICAL: Write the ENTIRE listing NATIVELY in ${mp.langEn}. Do NOT translate from English or any other language. Use natural, fluent phrasing that a native ${mp.langEn} speaker would use when shopping online.
+IMPORTANT: The product information, uploaded files, and descriptions below may be written in a DIFFERENT language (e.g., Polish, German, English). This is ONLY source material — extract the product details, features, and specifications from it, but you MUST write the ENTIRE output (title, bullets, description, backend keywords) in ${mp.langEn}. NEVER copy text from the source material as-is if it is not in ${mp.langEn}.
 
 PRODUCT INFORMATION:
 ${productInfo}
@@ -650,7 +651,7 @@ ${mainKeyword ? `PRIMARY KEYWORD (MUST appear in the first 70 characters of the 
 ${secondaryKeywords ? `SECONDARY KEYWORDS (weave these into the title after char 70, into bullet points, and description naturally): ${secondaryKeywords}` : "No secondary keywords provided — determine the best secondary keywords yourself."}
 ${catInfo ? `CATEGORY: ${catInfo.path}\nitem_type_keyword: ${catInfo.item_type}\nCategory attributes: ${catInfo.attrs.join(", ")}` : ""}
 ${csvKeywords ? `\nHELIUM 10 KEYWORD DATA (sorted by search volume):\n${csvKeywords.slice(0, 30).map((k, i) => `${i + 1}. "${k.keyword}" (vol: ${k.volume})`).join("\n")}\nUse the top keywords strategically: #1-3 in title, #4-15 in bullets, rest in backend/description.` : ""}
-${uploadedFiles.filter(f => f.type === "text").length > 0 ? `\nADDITIONAL PRODUCT INFORMATION FROM UPLOADED FILES:\n${uploadedFiles.filter(f => f.type === "text").map(f => `--- ${f.name} ---\n${f.content.slice(0, 3000)}`).join("\n\n")}` : ""}
+${uploadedFiles.filter(f => f.type === "text").length > 0 ? `\nADDITIONAL PRODUCT INFORMATION FROM UPLOADED FILES (NOTE: these files may be in a different language than the target marketplace — use them ONLY as an information source, extract product details from them, but ALWAYS write the listing in ${mp.langEn}):\n${uploadedFiles.filter(f => f.type === "text").map(f => `--- ${f.name} ---\n${f.content.slice(0, 3000)}`).join("\n\n")}` : ""}
 ${imageData.length > 0 ? `\nIMAGES ATTACHED: ${imageData.length} image(s) showing the product. Analyze them carefully to extract product details, features, text, specifications, and any visible information that should be included in the listing.` : ""}
 
 YOUR TASK: Generate a FULLY optimized Amazon listing. Even if the product description is brief, use your knowledge to infer logical product features and create a comprehensive listing. Think like an experienced Amazon seller.
