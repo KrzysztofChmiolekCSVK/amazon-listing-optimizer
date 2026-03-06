@@ -919,6 +919,75 @@ Respond ONLY with valid JSON in ${mp.langEn}:
           // Apply trimmed bullets back
           bulletKeys.forEach((k, i) => { parsed[k] = bullets[i]; });
         }
+        
+        // Post-processing: enforce bullet points MINIMUM LIMIT of 950 chars
+        total = bullets.reduce((sum, b) => sum + b.length, 0);
+        if (total < 950) {
+          setStatus("Dobijanie długości punktów (bullet points)...");
+          const deficit = 975 - total; // AIM for 975
+          
+          // Ask AI to generate generic benefit-driven padding sentences natively in the target language
+          const padPrompt = `I need MORE text for some Amazon listing bullet points in ${mp.langEn}.
+          
+Product: ${parsed.title}
+
+Current bullets:
+${bullets.map((b, i) => `[${i}] ${b}`).join("\n")}
+
+The total length is too short. I need you to generate exactly 3 distinct, natural, benefit-driven sentences in perfectly native ${mp.langEn} that can be appended to the ends of the bullets to make them longer.
+- DO NOT repeat existing info. Focus on: durability, customer satisfaction, ease of use, premium quality, or versatile applications.
+- Each sentence should be about 60-80 characters long.
+- Write them as standalone sentences ending with a period.
+
+Respond ONLY with a JSON array of 3 strings: ["sentence 1.", "sentence 2.", "sentence 3."]`;
+
+          try {
+            const padRes = await callAI([
+              { role: "system", content: `You only output valid JSON arrays of strings in ${mp.langEn}.` },
+              { role: "user", content: padPrompt }
+            ]);
+            
+            if (Array.isArray(padRes) && padRes.length > 0) {
+              // Sort bullets by length (shortest first)
+              const indexed = bullets.map((b, i) => ({ text: b, idx: i, len: b.length }));
+              indexed.sort((a, b) => a.len - b.len);
+              
+              // Append generated sentences to the shortest bullets
+              for (let i = 0; i < Math.min(padRes.length, 5); i++) {
+                if (padRes[i] && typeof padRes[i] === 'string') {
+                  const targetIdx = indexed[i % indexed.length].idx;
+                  let bullet = bullets[targetIdx];
+                  if (!bullet.endsWith(".")) bullet += ".";
+                  bullet += " " + padRes[i].trim();
+                  bullets[targetIdx] = bullet;
+                }
+              }
+              
+              // Update total
+              total = bullets.reduce((sum, b) => sum + b.length, 0);
+              
+              // If we accidentally exceeded 1000 due to padding, apply the exact same truncation logic as above
+              if (total > 1000) {
+                const excess = total - 1000;
+                // Just trim the exact amount we exceeded from the longest bullet
+                let longestIdx = 0;
+                for (let i = 1; i < 5; i++) {
+                  if (bullets[i].length > bullets[longestIdx].length) longestIdx = i;
+                }
+                let trimmed = bullets[longestIdx].slice(0, bullets[longestIdx].length - excess).trimEnd();
+                const cutPoint = Math.max(trimmed.lastIndexOf("."), trimmed.lastIndexOf(" "));
+                if (cutPoint > 0) trimmed = trimmed.slice(0, cutPoint);
+                if (!trimmed.endsWith(".")) trimmed += ".";
+                bullets[longestIdx] = trimmed;
+              }
+              
+              // Apply padded bullets back
+              bulletKeys.forEach((k, i) => { parsed[k] = bullets[i]; });
+            }
+          } catch (e) {
+            console.error("Bullet padding failed:", e);
+          }
+        }
       }
 
       // Post-processing: clean backend keywords thoroughly
