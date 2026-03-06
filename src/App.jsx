@@ -351,36 +351,44 @@ function ExcelInjector({ listing }) {
             setMsg("❌ Biblioteka ExcelJS nie została załadowana. Odśwież stronę.");
             return;
           }
-          setMsg("📂 Wczytywanie skoroszytu...");
-          // Używamy bezpośredniego ArrayBuffer
-          const buffer = evt.target.result;
+          setMsg("📂 Czytanie pliku...");
+          const arrayBuffer = evt.target.result;
           const workbook = new window.ExcelJS.Workbook();
-          await workbook.xlsx.load(buffer);
-
+          // Wymuszamy Uint8Array dla pewności typu i czystości bufora
+          await workbook.xlsx.load(new Uint8Array(arrayBuffer));
+          
           let targetWorksheet = null;
           let headerRowNumber = -1;
-          let headersFound = []; // [{ col: 5, key: 'title' }]
+          let headersFound = []; 
 
-          // Bezpieczniejsza iteracja po arkuszach
-          workbook.eachSheet((worksheet) => {
-            if (targetWorksheet) return;
+          // workbook.worksheets to zwykła tablica, bezpieczniejsza niż iteratory w niektórych środowiskach
+          const sheets = workbook.worksheets || [];
+          for (let s = 0; s < sheets.length; s++) {
+            const worksheet = sheets[s];
+            if (targetWorksheet) break;
             
-            // Skanujemy pierwsze 20 wierszy dla pewności
-            for (let i = 1; i <= 20; i++) {
+            // Skanujemy pierwsze 20 wierszy
+            const maxR = Math.min(20, worksheet.rowCount || 20);
+            for (let i = 1; i <= maxR; i++) {
               const row = worksheet.getRow(i);
-              if (!row || !row.values || row.values.length === 0) continue;
+              // row.values w ExcelJS to tablica (zaczyna się od index 1)
+              const vals = row ? row.values : null;
+              if (!vals || !Array.isArray(vals)) continue;
               
               let foundTitleCol = false;
               let currentHeaders = [];
               
-              row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
-                const cellText = (cell.text || "").toString();
-                const mappedKey = searchAlias(cellText);
-                if (mappedKey) {
-                  if (mappedKey === 'title') foundTitleCol = true;
-                  currentHeaders.push({ col: colNumber, key: mappedKey });
-                }
-              });
+              // Sprawdzamy komórki w wierszu
+              for (let c = 1; c < vals.length; c++) {
+                 const cellVal = vals[c];
+                 if (!cellVal) continue;
+                 const cellText = (typeof cellVal === 'object' && cellVal.text) ? cellVal.text : cellVal.toString();
+                 const mappedKey = searchAlias(cellText);
+                 if (mappedKey) {
+                   if (mappedKey === 'title') foundTitleCol = true;
+                   currentHeaders.push({ col: c, key: mappedKey });
+                 }
+              }
 
               if (foundTitleCol) {
                 targetWorksheet = worksheet;
@@ -389,7 +397,7 @@ function ExcelInjector({ listing }) {
                 break;
               }
             }
-          });
+          }
           
           if (!targetWorksheet || headerRowNumber === -1) {
             setMsg("❌ Nie odnaleziono systemowych nagłówków Amazona w żadnym arkuszu.");
