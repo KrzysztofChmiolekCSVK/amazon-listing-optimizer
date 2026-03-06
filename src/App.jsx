@@ -18,15 +18,12 @@ const MARKETPLACES = [
 const GROQ_MODELS = [
   { id: "meta-llama/llama-4-scout-17b-16e-instruct", name: "Llama 4 Scout", desc: "Zalecany — szybki, 12 języków EU, darmowy" },
   { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B", desc: "Sprawdzony — dobra jakość ogólna" },
-  { id: "qwen/qwen3-32b", name: "Qwen 3 32B", desc: "100+ języków, dobry z PL" },
-  { id: "openai/gpt-oss-120b", name: "GPT-OSS 120B", desc: "OpenAI open-source 120B" },
   { id: "meta-llama/llama-4-maverick-17b-128e-instruct", name: "Llama 4 Maverick", desc: "Najlepszy ale niski darmowy limit" },
 ];
 
 const GEMINI_MODELS = [
   { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", desc: "Zalecany — szybki, dobra jakość, darmowy" },
   { id: "gemini-2.5-flash-lite", name: "Gemini 2.5 Flash Lite", desc: "Najszybszy — lekki, darmowy" },
-  { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro", desc: "Najlepszy — najwyższa jakość" },
 ];
 
 const BULLET_THEMES = [
@@ -463,6 +460,74 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, g
   const [mainKeyword, setMainKeyword] = useState("");
   const [secondaryKeywords, setSecondaryKeywords] = useState("");
   const [error, setError] = useState("");
+  const [csvKeywords, setCsvKeywords] = useState(null);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [imageData, setImageData] = useState([]);
+
+  // CSV parser for Helium 10
+  function handleCsvUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const text = ev.target.result;
+        const lines = text.split("\n").map(l => l.split(/[,;\t]/));
+        const header = lines[0].map(h => h.replace(/"/g, "").trim().toLowerCase());
+        const kwIdx = header.findIndex(h => h.includes("keyword") || h.includes("phrase") || h.includes("search term"));
+        const volIdx = header.findIndex(h => h.includes("volume") || h.includes("search vol") || h.includes("sv"));
+        if (kwIdx === -1) { setError("Nie znaleziono kolumny ze słowami kluczowymi w pliku CSV."); return; }
+
+        const keywords = lines.slice(1)
+          .filter(row => row[kwIdx]?.trim())
+          .map(row => ({
+            keyword: row[kwIdx].replace(/"/g, "").trim(),
+            volume: volIdx >= 0 ? parseInt(row[volIdx]?.replace(/"/g, "").trim()) || 0 : 0,
+          }))
+          .filter(k => k.keyword.length > 0)
+          .sort((a, b) => b.volume - a.volume);
+
+        setCsvKeywords(keywords);
+        // Auto-fill main keyword and secondary
+        if (keywords.length > 0 && !mainKeyword) setMainKeyword(keywords[0].keyword);
+        if (keywords.length > 1 && !secondaryKeywords) {
+          setSecondaryKeywords(keywords.slice(1, 10).map(k => k.keyword).join(", "));
+        }
+      } catch { setError("Błąd parsowania pliku CSV."); }
+    };
+    reader.readAsText(file);
+  }
+
+  // Text file reader
+  function handleTextUpload(e) {
+    const files = Array.from(e.target.files);
+    files.forEach(file => {
+      const reader = new FileReader();
+      if (file.type.startsWith("image/")) {
+        reader.onload = (ev) => {
+          const base64 = ev.target.result.split(",")[1];
+          const mimeType = file.type;
+          setImageData(prev => [...prev, { base64, mimeType, name: file.name }]);
+          setUploadedFiles(prev => [...prev, { name: file.name, type: "image" }]);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        reader.onload = (ev) => {
+          const text = ev.target.result;
+          setUploadedFiles(prev => [...prev, { name: file.name, type: "text", content: text }]);
+        };
+        reader.readAsText(file);
+      }
+    });
+  }
+
+  function removeFile(idx) {
+    const file = uploadedFiles[idx];
+    if (file.type === "image") {
+      setImageData(prev => prev.filter(img => img.name !== file.name));
+    }
+    setUploadedFiles(prev => prev.filter((_, i) => i !== idx));
+  }
 
   async function callAI(messages) {
     let url, headers, body;
@@ -532,6 +597,9 @@ ${productInfo}
 ${mainKeyword ? `PRIMARY KEYWORD (MUST appear in the first 70 characters of the title, ideally as the first descriptive words after the brand): ${mainKeyword}` : "No primary keyword provided — determine the best primary keyword yourself based on the product."}
 ${secondaryKeywords ? `SECONDARY KEYWORDS (weave these into the title after char 70, into bullet points, and description naturally): ${secondaryKeywords}` : "No secondary keywords provided — determine the best secondary keywords yourself."}
 ${catInfo ? `CATEGORY: ${catInfo.path}\nitem_type_keyword: ${catInfo.item_type}\nCategory attributes: ${catInfo.attrs.join(", ")}` : ""}
+${csvKeywords ? `\nHELIUM 10 KEYWORD DATA (sorted by search volume):\n${csvKeywords.slice(0, 30).map((k, i) => `${i + 1}. "${k.keyword}" (vol: ${k.volume})`).join("\n")}\nUse the top keywords strategically: #1-3 in title, #4-15 in bullets, rest in backend/description.` : ""}
+${uploadedFiles.filter(f => f.type === "text").length > 0 ? `\nADDITIONAL PRODUCT INFORMATION FROM UPLOADED FILES:\n${uploadedFiles.filter(f => f.type === "text").map(f => `--- ${f.name} ---\n${f.content.slice(0, 3000)}`).join("\n\n")}` : ""}
+${imageData.length > 0 ? `\nIMAGES ATTACHED: ${imageData.length} image(s) showing the product. Analyze them carefully to extract product details, features, text, specifications, and any visible information that should be included in the listing.` : ""}
 
 YOUR TASK: Generate a FULLY optimized Amazon listing. Even if the product description is brief, use your knowledge to infer logical product features and create a comprehensive listing. Think like an experienced Amazon seller.
 
@@ -633,7 +701,21 @@ FINAL CHECK before responding:
       const catInfo = selectedCategory && btg?.category_attrs[selectedCategory];
       const prompt = buildPrompt(mp, catInfo);
 
-      let parsed = await callAI([{ role: "user", content: prompt }]);
+      // Build message with optional images
+      let userContent;
+      if (imageData.length > 0) {
+        userContent = [
+          { type: "text", text: prompt },
+          ...imageData.map(img => ({
+            type: "image_url",
+            image_url: { url: `data:${img.mimeType};base64,${img.base64}` }
+          }))
+        ];
+      } else {
+        userContent = prompt;
+      }
+
+      let parsed = await callAI([{ role: "user", content: userContent }]);
 
       // Auto-validation: check if listing needs improvement
       const titleLen = (parsed.title || "").length;
@@ -758,6 +840,69 @@ Respond ONLY with the improved JSON, same format:
       <Field label="Dodatkowe słowa kluczowe (Secondary Keywords)" value={secondaryKeywords} onChange={setSecondaryKeywords}
         placeholder="np. Thermomix Zubehör, Rutschfest, Acryl Unterlage..."
         helper="Oddzielone przecinkami. Zostaną wplecione w dalszą część tytułu, bullety i opis." />
+
+      {/* File Uploads */}
+      <div style={{ marginBottom: 16, padding: 16, background: "#0d0e14", borderRadius: 12, border: `1px dashed ${S.border}` }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: "#c4c8d0", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          Załączniki (opcjonalnie)
+        </div>
+
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+          {/* CSV Upload */}
+          <label style={{
+            padding: "8px 14px", borderRadius: 8, border: `1px solid ${csvKeywords ? "#22c55e" : S.border}`,
+            background: csvKeywords ? "#22c55e15" : S.input, color: csvKeywords ? "#22c55e" : S.muted,
+            cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", gap: 6,
+          }}>
+            <span style={{ fontSize: 16 }}>📊</span>
+            {csvKeywords ? `Helium 10 (${csvKeywords.length} keywords)` : "Wgraj CSV z Helium 10"}
+            <input type="file" accept=".csv,.xlsx,.xls" onChange={handleCsvUpload} style={{ display: "none" }} />
+          </label>
+
+          {/* Image/Text Upload */}
+          <label style={{
+            padding: "8px 14px", borderRadius: 8, border: `1px solid ${S.border}`,
+            background: S.input, color: S.muted, cursor: "pointer", fontSize: 12,
+            display: "flex", alignItems: "center", gap: 6,
+          }}>
+            <span style={{ fontSize: 16 }}>📎</span>
+            Wgraj zdjęcia / pliki tekstowe
+            <input type="file" accept="image/*,.txt,.pdf,.doc,.docx" multiple onChange={handleTextUpload} style={{ display: "none" }} />
+          </label>
+        </div>
+
+        {/* Uploaded files list */}
+        {(uploadedFiles.length > 0 || csvKeywords) && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {csvKeywords && (
+              <span style={{
+                padding: "4px 10px", borderRadius: 6, background: "#22c55e15", border: "1px solid #22c55e30",
+                fontSize: 11, color: "#22c55e", display: "flex", alignItems: "center", gap: 4,
+              }}>
+                📊 Helium 10 — {csvKeywords.length} keywords
+                <button onClick={() => { setCsvKeywords(null); }} style={{
+                  background: "none", border: "none", color: "#22c55e", cursor: "pointer", fontSize: 14, padding: "0 2px",
+                }}>×</button>
+              </span>
+            )}
+            {uploadedFiles.map((f, i) => (
+              <span key={i} style={{
+                padding: "4px 10px", borderRadius: 6, background: "#1e2028", border: "1px solid #2a2d35",
+                fontSize: 11, color: "#c4c8d0", display: "flex", alignItems: "center", gap: 4,
+              }}>
+                {f.type === "image" ? "🖼️" : "📄"} {f.name.length > 25 ? f.name.slice(0, 22) + "..." : f.name}
+                <button onClick={() => removeFile(i)} style={{
+                  background: "none", border: "none", color: S.muted, cursor: "pointer", fontSize: 14, padding: "0 2px",
+                }}>×</button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div style={{ fontSize: 10, color: S.dim, marginTop: 6 }}>
+          CSV: eksport z Helium 10 (Cerebro/Magnet). Zdjęcia: pudełko, listing, produkt. Tekst: opis copywritera, instrukcja.
+        </div>
+      </div>
 
       {error && (
         <div style={{ padding: "10px 14px", background: "#2d1215", border: "1px solid #7f1d1d", borderRadius: 8, color: "#fca5a5", fontSize: 13, marginBottom: 12 }}>
