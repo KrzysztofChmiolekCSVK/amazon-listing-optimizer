@@ -348,12 +348,23 @@ function ExcelInjector({ listing }) {
           let headerRowIdx = -1;
           let json = null;
 
+          const searchAlias = (headerStr) => {
+            const h = headerStr.toLowerCase().trim();
+            for (const [key, aliases] of Object.entries(COLUMN_ALIASES)) {
+              if (aliases.some(alias => h.startsWith(alias) || h.includes(alias))) {
+                return key;
+              }
+            }
+            return null;
+          };
+
           for (const sName of workbook.SheetNames) {
             const sheet = workbook.Sheets[sName];
             const tempJson = window.XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
             
-            for(let i=0; i<10; i++) {
-               if(tempJson[i] && tempJson[i].some(c => c && typeof c === 'string' && COLUMN_ALIASES.title.includes(c.toLowerCase().trim()))) {
+            // Skanuje pierwsze 15 wierszy
+            for(let i=0; i<15; i++) {
+               if(tempJson[i] && tempJson[i].some(c => c && typeof c === 'string' && searchAlias(c) === 'title')) {
                  targetSheetName = sName;
                  headerRowIdx = i;
                  json = tempJson;
@@ -365,7 +376,7 @@ function ExcelInjector({ listing }) {
           
           if(!targetSheetName || headerRowIdx === -1) {
              // Zrzut ratunkowy nazw kolumn do błędu, aby user wiedział gdzie szukał
-            setMsg("❌ Nie odnaleziono nagłówka tytułu (np. item_name, Produktname) w pierwszych 10 wierszach żadnego arkusza.");
+            setMsg("❌ Nie odnaleziono nagłówka tytułu (np. item_name, Produktname) w pierwszych 15 wierszach żadnego arkusza.");
             return;
           }
           
@@ -389,18 +400,15 @@ function ExcelInjector({ listing }) {
           
           let updatedCount = 0;
           headers.forEach((h, colIdx) => {
-             const lowerH = h ? h.toString().toLowerCase().trim() : "";
-             if (!lowerH) return;
+             if (!h) return;
              
-             for (const [key, aliases] of Object.entries(COLUMN_ALIASES)) {
-                if (aliases.includes(lowerH)) {
-                  const val = getListingValue(key);
-                  if (val) {
-                    dataRow[colIdx] = val;
-                    updatedCount++;
-                  }
-                  break; // Znalazł klucz, szukaj kolejnej komórki nagłówka
-                }
+             const matchedKey = searchAlias(h.toString());
+             if (matchedKey) {
+               const val = getListingValue(matchedKey);
+               if (val) {
+                 dataRow[colIdx] = val;
+                 updatedCount++;
+               }
              }
           });
           
