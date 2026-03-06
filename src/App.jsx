@@ -811,6 +811,65 @@ Respond ONLY with the improved JSON, same format:
         }
         
         parsed.backendKeywords = result.join(" ");
+
+        // 5. If under 235 bytes after cleanup, ask AI for more complementary keywords
+        const finalBytes = byteCount(parsed.backendKeywords);
+        if (finalBytes < 235) {
+          setStatus("Dobijanie backend keywords...");
+          const remainingBytes = 248 - finalBytes;
+          const padPrompt = `I need MORE backend search terms for an Amazon ${mp.langEn} listing. 
+
+Product: ${parsed.title}
+
+Words already used (DO NOT repeat any of these): ${[...listingWords, ...result].join(" ")}
+
+Generate ONLY a space-separated list of unique lowercase ${mp.langEn} words. These must be:
+- Synonyms, related product categories, compatible accessories, use cases, materials, locations, actions
+- NOT in the forbidden list above
+- No stop words, no brand names, no punctuation
+- Total must fit in approximately ${remainingBytes} bytes (special chars like ö,ü,ä,ą,ę = 2 bytes each)
+
+Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-separated lowercase words.`;
+
+          try {
+            const padRes = await fetch(
+              provider === "gemini"
+                ? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+                : "https://api.groq.com/openai/v1/chat/completions",
+              {
+                method: "POST",
+                headers: provider === "gemini"
+                  ? { "Content-Type": "application/json", "Authorization": `Bearer ${geminiKey}` }
+                  : { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+                body: JSON.stringify({
+                  model: model,
+                  messages: [{ role: "user", content: padPrompt }],
+                  temperature: 0.9,
+                  max_tokens: 500,
+                }),
+              }
+            );
+            if (padRes.ok) {
+              const padData = await padRes.json();
+              const padText = (padData.choices?.[0]?.message?.content || "").toLowerCase().replace(/[^a-ząćęłńóśźżäöüßéèêëàâçîïôùûñáíóúě\s]/g, " ");
+              const padWords = padText.split(/\s+/).filter(Boolean);
+              const usedWords = new Set([...listingWords, ...result, ...stopWords]);
+              const uniquePad = [...new Set(padWords)].filter(w => !usedWords.has(w) && w.length > 2);
+              
+              // Add words until we hit ~248 bytes
+              let padCurrentBytes = byteCount(parsed.backendKeywords);
+              const padResult = [...result];
+              for (const word of uniquePad) {
+                const wb = byteCount(word + " ");
+                if (padCurrentBytes + wb - 1 <= 250) {
+                  padResult.push(word);
+                  padCurrentBytes += wb;
+                }
+              }
+              parsed.backendKeywords = padResult.join(" ");
+            }
+          } catch { /* silently continue with what we have */ }
+        }
       }
 
       setListing({
