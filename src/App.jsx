@@ -494,10 +494,6 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, g
   const [productInfo, setProductInfo] = useState("");
   const [referenceBullets, setReferenceBullets] = useState(null);
 
-  // Zresetuj wzorzec, jeśli użytkownik zmieni bazowy opis lub usunie załączniki
-  useEffect(() => {
-    setReferenceBullets(null);
-  }, [productInfo]);
   const [mainKeyword, setMainKeyword] = useState("");
   const [secondaryKeywords, setSecondaryKeywords] = useState("");
   const [error, setError] = useState("");
@@ -585,7 +581,6 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, g
       setImageData(prev => prev.filter(img => img.name !== file.name));
     }
     setUploadedFiles(prev => prev.filter((_, i) => i !== idx));
-    setReferenceBullets(null); // Reset reference when removing files
   }
 
   async function callAI(messages) {
@@ -770,7 +765,9 @@ Double-check: Is every word in your JSON response written in ${mp.langEn}? If no
   }
 
   async function generate() {
-    if (!productInfo.trim()) return setError("Najpierw opisz swój produkt.");
+    if (!productInfo.trim() && uploadedFiles.length === 0 && imageData.length === 0) {
+      return setError("Opisz swój produkt lub wgraj załączniki z danymi (instrukcje, zdjęcia).");
+    }
     const activeKey = provider === "gemini" ? geminiKey : apiKey;
     if (!activeKey.trim()) return setError(`Wpisz klucz API ${provider === "gemini" ? "Gemini" : "Groq"} w zakładce ⚙️ Ustawienia.`);
     if (!marketplace) return setError("Wybierz marketplace.");
@@ -1220,6 +1217,36 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
           CSV: eksport z Helium 10 (Cerebro/Magnet). Zdjęcia: pudełko, listing, produkt. Tekst: opis copywritera, instrukcja.
         </div>
       </div>
+
+      {referenceBullets && (
+        <div style={{ 
+          marginBottom: 16, padding: "12px 16px", background: "rgba(34, 197, 94, 0.1)", 
+          borderRadius: 12, border: "1px solid rgba(34, 197, 94, 0.3)",
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12
+        }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#22c55e", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 16 }}>🔗</span> Zablokowana struktura bullet points
+            </div>
+            <div style={{ fontSize: 12, color: "#a1a1aa", marginTop: 4 }}>
+              Kolejne generowane języki zachowają stałą konstrukcję i znaczenie punktów.
+            </div>
+          </div>
+          <button 
+            onClick={() => setReferenceBullets(null)} 
+            style={{
+              background: "rgba(34, 197, 94, 0.15)", color: "#22c55e", border: "none", 
+              padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer",
+              transition: "background 0.2s"
+            }}
+            onMouseOver={(e) => e.currentTarget.style.background = "rgba(34, 197, 94, 0.25)"}
+            onMouseOut={(e) => e.currentTarget.style.background = "rgba(34, 197, 94, 0.15)"}
+          >
+            🔄 Resetuj wzorzec
+          </button>
+        </div>
+      )}
+
 
       {error && (
         <div style={{ padding: "10px 14px", background: "#2d1215", border: "1px solid #7f1d1d", borderRadius: 8, color: "#fca5a5", fontSize: 13, marginBottom: 12 }}>
