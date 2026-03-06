@@ -312,6 +312,29 @@ function SectionHead({ children, copyText, copyLabel }) {
    LISTING PREVIEW + SCORE + EXCEL INJECTOR
    ═══════════════════════════════════════════ */
 
+const COLUMN_ALIASES = {
+  title: ['item_name', 'title', 'produktname', 'nom_du_produit', 'nom du produit', 'titre', 'nombre_del_producto', 'nome_dell_articolo', 'nazwa_produktu', 'product_name'],
+  desc: ['product_description', 'produktbeschreibung', 'description_du_produit', 'descripción_del_producto', 'descrizione_del_prodotto', 'opis_produktu'],
+  brand: ['brand', 'markenname', 'marque', 'marca', 'marca_del_producto', 'nazwa_marki'],
+  bp1: ['bullet_point1', 'bullet_point_1', 'bullet-punkt 1', 'caractéristique_1', 'característica_1', 'caratteristica_1', 'punkt_opisowy_1'],
+  bp2: ['bullet_point2', 'bullet_point_2', 'bullet-punkt 2', 'caractéristique_2', 'característica_2', 'caratteristica_2', 'punkt_opisowy_2'],
+  bp3: ['bullet_point3', 'bullet_point_3', 'bullet-punkt 3', 'caractéristique_3', 'característica_3', 'caratteristica_3', 'punkt_opisowy_3'],
+  bp4: ['bullet_point4', 'bullet_point_4', 'bullet-punkt 4', 'caractéristique_4', 'característica_4', 'caratteristica_4', 'punkt_opisowy_4'],
+  bp5: ['bullet_point5', 'bullet_point_5', 'bullet-punkt 5', 'caractéristique_5', 'característica_5', 'caratteristica_5', 'punkt_opisowy_5'],
+  keywords: ['generic_keywords', 'search_terms', 'generic_keyword', 'allgemeine_schlüsselwörter', 'mots_clés_génériques', 'términos_de_búsqueda_genéricos', 'termini_di_ricerca_generici']
+};
+
+function searchAlias(headerStr) {
+  if (!headerStr) return null;
+  const h = headerStr.toString().toLowerCase().trim();
+  for (const [key, aliases] of Object.entries(COLUMN_ALIASES)) {
+    if (aliases.some(alias => h.startsWith(alias) || h.includes(alias))) {
+      return key;
+    }
+  }
+  return null;
+}
+
 function ExcelInjector({ listing }) {
   const [msg, setMsg] = useState("");
   
@@ -328,54 +351,38 @@ function ExcelInjector({ listing }) {
             setMsg("❌ Biblioteka ExcelJS nie została załadowana. Odśwież stronę.");
             return;
           }
-          const buffer = evt.target.result;
+          setMsg("📂 Wczytywanie skoroszytu...");
+          const buffer = new Uint8Array(evt.target.result);
           const workbook = new window.ExcelJS.Workbook();
           await workbook.xlsx.load(buffer);
 
-          const COLUMN_ALIASES = {
-            title: ['item_name', 'title', 'produktname', 'nom_du_produit', 'nom du produit', 'titre', 'nombre_del_producto', 'nome_dell_articolo', 'nazwa_produktu', 'product_name'],
-            desc: ['product_description', 'produktbeschreibung', 'description_du_produit', 'descripción_del_producto', 'descrizione_del_prodotto', 'opis_produktu'],
-            bp1: ['bullet_point1', 'bullet_point_1', 'bullet-punkt 1', 'caractéristique_1', 'característica_1', 'caratteristica_1', 'punkt_opisowy_1'],
-            bp2: ['bullet_point2', 'bullet_point_2', 'bullet-punkt 2', 'caractéristique_2', 'característica_2', 'caratteristica_2', 'punkt_opisowy_2'],
-            bp3: ['bullet_point3', 'bullet_point_3', 'bullet-punkt 3', 'caractéristique_3', 'característica_3', 'caratteristica_3', 'punkt_opisowy_3'],
-            bp4: ['bullet_point4', 'bullet_point_4', 'bullet-punkt 4', 'caractéristique_4', 'característica_4', 'caratteristica_4', 'punkt_opisowy_4'],
-            bp5: ['bullet_point5', 'bullet_point_5', 'bullet-punkt 5', 'caractéristique_5', 'característica_5', 'caratteristica_5', 'punkt_opisowy_5'],
-            keywords: ['generic_keywords', 'search_terms', 'generic_keyword', 'allgemeine_schlüsselwörter', 'mots_clés_génériques', 'términos_de_búsqueda_genéricos', 'termini_di_ricerca_generici']
-          };
-
-          const searchAlias = (headerStr) => {
-            if(!headerStr) return null;
-            const h = headerStr.toString().toLowerCase().trim();
-            for (const [key, aliases] of Object.entries(COLUMN_ALIASES)) {
-              if (aliases.some(alias => h.startsWith(alias) || h.includes(alias))) {
-                return key;
-              }
-            }
-            return null;
-          };
-
           let targetWorksheet = null;
           let headerRowNumber = -1;
-          let headersMap = {}; // { kolumna (np. 5): 'bp1' }
+          let headersMap = {}; 
 
-          // Przeszukujemy arkusze w poszukiwaniu nagłówków:
-          workbook.eachSheet((worksheet) => {
-            if (targetWorksheet) return; // znaleziono już
+          const sheets = workbook.worksheets;
+          for (let s = 0; s < sheets.length; s++) {
+            const worksheet = sheets[s];
+            if (targetWorksheet) break;
             
-            // Skanuje pierwsze 15 wierszy
             for (let i = 1; i <= 15; i++) {
               const row = worksheet.getRow(i);
+              if (!row) continue;
+              
               let foundTitleCol = false;
               let tempHeadersMap = {};
               
-              row.eachCell((cell, colNumber) => {
-                const cellVal = cell.text || (cell.value ? cell.value.toString() : "");
-                const mappedKey = searchAlias(cellVal);
-                if (mappedKey) {
-                  if (mappedKey === 'title') foundTitleCol = true;
-                  tempHeadersMap[colNumber] = mappedKey;
-                }
-              });
+              const cellCount = row.cellCount || 100;
+              for (let c = 1; c <= cellCount; c++) {
+                 const cell = row.getCell(c);
+                 if (!cell || !cell.value) continue;
+                 const cellText = cell.text || cell.value.toString();
+                 const mappedKey = searchAlias(cellText);
+                 if (mappedKey) {
+                   if (mappedKey === 'title') foundTitleCol = true;
+                   tempHeadersMap[c] = mappedKey;
+                 }
+              }
 
               if (foundTitleCol) {
                 targetWorksheet = worksheet;
@@ -384,24 +391,20 @@ function ExcelInjector({ listing }) {
                 break;
               }
             }
-          });
+          }
           
           if (!targetWorksheet || headerRowNumber === -1) {
-            setMsg("❌ Nie odnaleziono systemowych nagłówków Amazona (np. item_name) w pierwszych 15 wierszach żadnego arkusza.");
+            setMsg("❌ Nie odnaleziono systemowych nagłówków Amazona w żadnym arkuszu.");
             return;
           }
           
-          // Znajdź wiersz docelowy z produktem użytkownika (zaczynamy szukać poniżej nagłówka)
           let targetRowNumber = headerRowNumber + 1;
           for (let i = headerRowNumber + 1; i <= targetWorksheet.rowCount && i < headerRowNumber + 50; i++) {
-             // Szukamy wiersza, który ma cokolwiek wpisane w pierwszej lub drugiej kolumnie i nie jest "instrukcją Amazona" (np. szare paski)
-             // Zakładamy, że jako sprzedawca wpisałeś tam SKU produktu jak na Twoim własnym zrzucie ekranu.
              const r = targetWorksheet.getRow(i);
              const cellA = (r.getCell(1).text || "").trim();
              const cellB = (r.getCell(2).text || "").trim();
-             const cellC = (r.getCell(3).text || "").trim(); // Gwarancja ominięcia pustych
+             const cellC = (r.getCell(3).text || "").trim();
              
-             // Jeśli ktoś nadał np. "SKU TEST" nie zawiera słów Amazona z przykładów
              if((cellA || cellB || cellC) && !cellB.toLowerCase().includes("contribution") && !cellA.toLowerCase().includes("example")) {
                  targetRowNumber = i;
                  break;
@@ -411,6 +414,7 @@ function ExcelInjector({ listing }) {
           const targetRow = targetWorksheet.getRow(targetRowNumber);
           
           const getListingValue = (aliasKey) => {
+            if (aliasKey === 'brand') return listing.brand || "";
             if (aliasKey === 'title') return listing.title;
             if (aliasKey === 'desc') return listing.description || "";
             if (aliasKey === 'bp1') return listing.bullets[0] || "";
@@ -1198,9 +1202,10 @@ Respond ONLY with a JSON array of 3 strings: ["sentence 1.", "sentence 2.", "sen
 
       // Post-processing: clean backend keywords thoroughly
       if (parsed.backendKeywords) {
-        // Collect all words from title, bullets, description (lowercased)
+        // Collect all words from title, bullets, description, brand (lowercased)
         const listingText = [
           parsed.title || "",
+          parsed.brand || brand || "",
           parsed.bullet1 || "", parsed.bullet2 || "", parsed.bullet3 || "",
           parsed.bullet4 || "", parsed.bullet5 || "",
           (parsed.description || "").replace(/<br\s*\/?>/gi, " "),
@@ -1304,6 +1309,7 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
         bullets: [parsed.bullet1||"", parsed.bullet2||"", parsed.bullet3||"", parsed.bullet4||"", parsed.bullet5||""],
         description: parsed.description || "",
         backendKeywords: parsed.backendKeywords || "",
+        brand: parsed.brand || brand || "",
       });
       setReferenceBullets([parsed.bullet1||"", parsed.bullet2||"", parsed.bullet3||"", parsed.bullet4||"", parsed.bullet5||""]);
       setReferenceDescription(parsed.description || "");
@@ -1510,7 +1516,7 @@ export default function App() {
   const [btg, setBtg] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [listing, setListing] = useState({
-    title: "", bullets: ["", "", "", "", ""], description: "", backendKeywords: "",
+    title: "", bullets: ["", "", "", "", ""], description: "", backendKeywords: "", brand: "",
   });
 
   // Load BTG data
