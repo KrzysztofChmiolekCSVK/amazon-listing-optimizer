@@ -493,6 +493,8 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, g
   const [status, setStatus] = useState("");
   const [productInfo, setProductInfo] = useState("");
   const [referenceBullets, setReferenceBullets] = useState(null);
+  const [referenceDescription, setReferenceDescription] = useState(null);
+  const [brand, setBrand] = useState("");
 
   const [mainKeyword, setMainKeyword] = useState("");
   const [secondaryKeywords, setSecondaryKeywords] = useState("");
@@ -640,7 +642,7 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, g
     }
   }
 
-  function buildPrompt(mp, catInfo) {
+  function buildPrompt(mp, catInfo, brandValue) {
     return `You are a world-class Amazon listing optimizer specializing in European marketplaces. You have deep expertise in Amazon's A9/A10 algorithm, Rufus, and Cosmo AI systems.
 
 TARGET MARKETPLACE: ${mp.code} (${mp.langEn})
@@ -649,6 +651,7 @@ IMPORTANT: The product information, uploaded files, and descriptions below may b
 
 PRODUCT INFORMATION:
 ${productInfo}
+${brandValue ? `BRAND: ${brandValue}` : ""}
 ${mainKeyword ? `PRIMARY KEYWORD (MUST appear in the first 70 characters of the title, ideally as the first descriptive words after the brand): ${mainKeyword}` : "No primary keyword provided — determine the best primary keyword yourself based on the product."}
 ${secondaryKeywords ? `SECONDARY KEYWORDS (weave these into the title after char 70, into bullet points, and description naturally): ${secondaryKeywords}` : "No secondary keywords provided — determine the best secondary keywords yourself."}
 ${catInfo ? `CATEGORY: ${catInfo.path}\nitem_type_keyword: ${catInfo.item_type}\nCategory attributes: ${catInfo.attrs.join(", ")}` : ""}
@@ -674,9 +677,10 @@ TITLE RULES (CRITICAL — follow exactly)
 ═══════════════════════════════════════
 - HARD LIMIT: Max 200 characters. AIM FOR 160-200 characters. A short title wastes keyword opportunities.
 - The first 66-70 characters are the MOST VALUABLE — this is what shows on mobile (~70% of Amazon traffic). The customer MUST understand what the product is within these first characters.
-- STRUCTURE: [Brand] [Primary Keyword = What It Is] – [Key Material/Feature] [Size] – [Secondary Feature/Keyword] – [Tertiary Keyword/Use Case] – [Model/Pack]
+- STRUCTURE: ${brandValue ? `[${brandValue}] ` : "[Brand] "}[Primary Keyword = What It Is] – [Key Material/Feature] [Size] – [Secondary Feature/Keyword] – [Tertiary Keyword/Use Case] – [Model/Pack]
 - SINGLE IDENTITY FIRST: The first 66 chars must clearly state ONE product function. Never open with multiple functions (e.g. "heater and sterilizer") — this confuses the A9 algorithm about what the product IS.
 - NO unknown model names at the start. Customers don't search for proprietary model names. Push them to the END.
+${brandValue ? `- BRAND PLACEMENT: You MUST start the title exactly with the brand name "${brandValue}". Do not put anything before it.\n` : ""}
 - Include 2-3 keyword phrases naturally in the title. Use dashes (–) to separate logical sections.
 - PROHIBITED: No ! $ ? _ { } ^ ¬ ¦ characters. No ALL CAPS. No promotional phrases ("best seller", "free shipping"). No word repeated more than 2 times. No emojis.
 - Use numerals ("2" not "two"). Capitalize first letter of each word except prepositions/conjunctions/articles.
@@ -706,11 +710,18 @@ BULLET POINTS RULES (5 bullets)
 ═══════════════════════════════════════
 PRODUCT DESCRIPTION RULES
 ═══════════════════════════════════════
+${referenceDescription ? `
+CRITICAL TEMPLATE: The user previously generated this description. To maintain perfect cross-marketplace consistency, you MUST translate and rewrite this EXACT description into natural ${mp.langEn}:
+
+${referenceDescription}
+
+Do NOT invent new paragraphs, change the logical progression, or remove details. Match the original meaning exactly.
+` : `
 - 1-2 paragraphs, aim for 800-1500 characters.
 - Expand on the most important features and use cases.
 - Paint a picture of the product in use — help the customer imagine owning it.
 - Include long-tail keywords naturally.
-- End with a confidence builder (warranty mention, brand quality, satisfaction).
+- End with a confidence builder (warranty mention, brand quality, satisfaction).`}
 - Use <br> tags to separate paragraphs for better readability. Example: "First paragraph text.<br><br>Second paragraph text."
 - No other HTML tags allowed — only <br> for line breaks.
 
@@ -778,7 +789,7 @@ Double-check: Is every word in your JSON response written in ${mp.langEn}? If no
     try {
       const mp = MARKETPLACES.find(m => m.code === marketplace);
       const catInfo = selectedCategory && btg?.category_attrs[selectedCategory];
-      const prompt = buildPrompt(mp, catInfo);
+      const prompt = buildPrompt(mp, catInfo, brand);
 
       // Build message with optional images
       let userContent;
@@ -1116,6 +1127,7 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
         backendKeywords: parsed.backendKeywords || "",
       });
       setReferenceBullets([parsed.bullet1||"", parsed.bullet2||"", parsed.bullet3||"", parsed.bullet4||"", parsed.bullet5||""]);
+      setReferenceDescription(parsed.description || "");
       setStatus("");
     } catch (e) {
       const msg = e.message || "";
@@ -1147,7 +1159,10 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
       </div>
 
       <Field label="Opis produktu" value={productInfo} onChange={setProductInfo} multi
-        placeholder="np. Bambusowa deska do krojenia premium, 40x30 cm, z rowkiem na sok i antypoślizgowymi nóżkami, marka: CookNature..." />
+        placeholder="np. Bambusowa deska do krojenia premium, 40x30 cm, z rowkiem na sok i antypoślizgowymi nóżkami..." />
+      <Field label="Marka produktu (Brand)" value={brand} onChange={setBrand}
+        placeholder="np. CookNature, Sillar..."
+        helper="Opcjonalne. Zostanie użyte na samym początku tytułu oraz wkomponowane w treść listingu." />
       <Field label="Główne słowo kluczowe (Main Keyword)" value={mainKeyword} onChange={setMainKeyword}
         placeholder="np. Gleitbrett, Wasserfilterkartusche, Schneidebrett..."
         helper="To słowo pojawi się na początku tytułu (w pierwszych 70 znakach). Jedno słowo/fraza opisująca czym jest produkt." />
@@ -1226,14 +1241,14 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
         }}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 600, color: "#22c55e", display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 16 }}>🔗</span> Zablokowana struktura bullet points
+              <span style={{ fontSize: 16 }}>🔗</span> Zablokowana struktura (punkty + opis)
             </div>
             <div style={{ fontSize: 12, color: "#a1a1aa", marginTop: 4 }}>
-              Kolejne generowane języki zachowają stałą konstrukcję i znaczenie punktów.
+              Kolejne generowane języki zachowają stałą konstrukcję i znaczenie punktów oraz opisu.
             </div>
           </div>
           <button 
-            onClick={() => setReferenceBullets(null)} 
+            onClick={() => { setReferenceBullets(null); setReferenceDescription(null); }} 
             style={{
               background: "rgba(34, 197, 94, 0.15)", color: "#22c55e", border: "none", 
               padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer",
