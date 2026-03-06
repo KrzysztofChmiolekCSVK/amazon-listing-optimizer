@@ -322,16 +322,16 @@ function ExcelInjector({ listing }) {
     
     try {
       const reader = new FileReader();
-      reader.onload = (evt) => {
+      reader.onload = async (evt) => {
         try {
-          if (!window.XLSX) {
-            setMsg("❌ Biblioteka XLSX nie została załadowana. Odśwież stronę.");
+          if (!window.ExcelJS) {
+            setMsg("❌ Biblioteka ExcelJS nie została załadowana. Odśwież stronę.");
             return;
           }
-          const data = new Uint8Array(evt.target.result);
-          const workbook = window.XLSX.read(data, { type: "array", cellStyles: true });
+          const buffer = evt.target.result;
+          const workbook = new window.ExcelJS.Workbook();
+          await workbook.xlsx.load(buffer);
 
-          // Mapowanie aliasów kolumn dla wielu rynków i wersji językowych Amazon
           const COLUMN_ALIASES = {
             title: ['item_name', 'title', 'produktname', 'nom_du_produit', 'nom du produit', 'titre', 'nombre_del_producto', 'nome_dell_articolo', 'nazwa_produktu', 'product_name'],
             desc: ['product_description', 'produktbeschreibung', 'description_du_produit', 'descripción_del_producto', 'descrizione_del_prodotto', 'opis_produktu'],
@@ -343,13 +343,9 @@ function ExcelInjector({ listing }) {
             keywords: ['generic_keywords', 'search_terms', 'generic_keyword', 'allgemeine_schlüsselwörter', 'mots_clés_génériques', 'términos_de_búsqueda_genéricos', 'termini_di_ricerca_generici']
           };
 
-          // Przeszukujemy wszystkie arkusze w pliku i pierwsze 10 wierszy w poszukiwaniu jakiegokolwiek nagłówka tytułowego
-          let targetSheetName = null;
-          let headerRowIdx = -1;
-          let json = null;
-
           const searchAlias = (headerStr) => {
-            const h = headerStr.toLowerCase().trim();
+            if(!headerStr) return null;
+            const h = headerStr.toString().toLowerCase().trim();
             for (const [key, aliases] of Object.entries(COLUMN_ALIASES)) {
               if (aliases.some(alias => h.startsWith(alias) || h.includes(alias))) {
                 return key;
@@ -358,33 +354,61 @@ function ExcelInjector({ listing }) {
             return null;
           };
 
-          for (const sName of workbook.SheetNames) {
-            const sheet = workbook.Sheets[sName];
-            const tempJson = window.XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+          let targetWorksheet = null;
+          let headerRowNumber = -1;
+          let headersMap = {}; // { kolumna (np. 5): 'bp1' }
+
+          // Przeszukujemy arkusze w poszukiwaniu nagłówków:
+          workbook.eachSheet((worksheet) => {
+            if (targetWorksheet) return; // znaleziono już
             
             // Skanuje pierwsze 15 wierszy
-            for(let i=0; i<15; i++) {
-               if(tempJson[i] && tempJson[i].some(c => c && typeof c === 'string' && searchAlias(c) === 'title')) {
-                 targetSheetName = sName;
-                 headerRowIdx = i;
-                 json = tempJson;
-                 break;
-               }
+            for (let i = 1; i <= 15; i++) {
+              const row = worksheet.getRow(i);
+              let foundTitleCol = false;
+              let tempHeadersMap = {};
+              
+              row.eachCell((cell, colNumber) => {
+                const cellVal = cell.text || (cell.value ? cell.value.toString() : "");
+                const mappedKey = searchAlias(cellVal);
+                if (mappedKey) {
+                  if (mappedKey === 'title') foundTitleCol = true;
+                  tempHeadersMap[colNumber] = mappedKey;
+                }
+              });
+
+              if (foundTitleCol) {
+                targetWorksheet = worksheet;
+                headerRowNumber = i;
+                headersMap = tempHeadersMap;
+                break;
+              }
             }
-            if (targetSheetName) break;
-          }
+          });
           
-          if(!targetSheetName || headerRowIdx === -1) {
-             // Zrzut ratunkowy nazw kolumn do błędu, aby user wiedział gdzie szukał
-            setMsg("❌ Nie odnaleziono nagłówka tytułu (np. item_name, Produktname) w pierwszych 15 wierszach żadnego arkusza.");
+          if (!targetWorksheet || headerRowNumber === -1) {
+            setMsg("❌ Nie odnaleziono systemowych nagłówków Amazona (np. item_name) w pierwszych 15 wierszach żadnego arkusza.");
             return;
           }
           
-          const headers = json[headerRowIdx];
-          const dataRowIdx = headerRowIdx + 1; // Pierwszy wiersz z danymi
-          
-          if(!json[dataRowIdx]) json[dataRowIdx] = [];
-          const dataRow = json[dataRowIdx];
+          // Znajdź wiersz docelowy z produktem użytkownika (zaczynamy szukać poniżej nagłówka)
+          let targetRowNumber = headerRowNumber + 1;
+          for (let i = headerRowNumber + 1; i <= targetWorksheet.rowCount && i < headerRowNumber + 50; i++) {
+             // Szukamy wiersza, który ma cokolwiek wpisane w pierwszej lub drugiej kolumnie i nie jest "instrukcją Amazona" (np. szare paski)
+             // Zakładamy, że jako sprzedawca wpisałeś tam SKU produktu jak na Twoim własnym zrzucie ekranu.
+             const r = targetWorksheet.getRow(i);
+             const cellA = (r.getCell(1).text || "").trim();
+             const cellB = (r.getCell(2).text || "").trim();
+             const cellC = (r.getCell(3).text || "").trim(); // Gwarancja ominięcia pustych
+             
+             // Jeśli ktoś nadał np. "SKU TEST" nie zawiera słów Amazona z przykładów
+             if((cellA || cellB || cellC) && !cellB.toLowerCase().includes("contribution") && !cellA.toLowerCase().includes("example")) {
+                 targetRowNumber = i;
+                 break;
+             }
+          }
+
+          const targetRow = targetWorksheet.getRow(targetRowNumber);
           
           const getListingValue = (aliasKey) => {
             if (aliasKey === 'title') return listing.title;
@@ -399,29 +423,35 @@ function ExcelInjector({ listing }) {
           };
           
           let updatedCount = 0;
-          headers.forEach((h, colIdx) => {
-             if (!h) return;
-             
-             const matchedKey = searchAlias(h.toString());
-             if (matchedKey) {
-               const val = getListingValue(matchedKey);
-               if (val) {
-                 dataRow[colIdx] = val;
+          for (const [colNumStr, mappedKey] of Object.entries(headersMap)) {
+             const colNumber = parseInt(colNumStr, 10);
+             const val = getListingValue(mappedKey);
+             if (val) {
+                 const cell = targetRow.getCell(colNumber);
+                 cell.value = val;
                  updatedCount++;
-               }
              }
-          });
+          }
           
-          json[dataRowIdx] = dataRow;
+          // Zapisanie zmodyfikowanego wiersza z powrotem do pliku
+          targetRow.commit();
           
-          // Podmiana danych w arkuszu
-          const newSheet = window.XLSX.utils.aoa_to_sheet(json);
-          workbook.Sheets[targetSheetName] = newSheet;
-          
+          const outBuffer = await workbook.xlsx.writeBuffer();
           const ext = file.name.substring(file.name.lastIndexOf('.'));
           const newName = file.name.replace(ext, "_z_AI" + ext);
-          window.XLSX.writeFile(workbook, newName);
-          setMsg(`✅ Zaktualizowano ${updatedCount} kolumn (zapisano jako ${newName}).`);
+          
+          // Pobieranie na u klienta
+          const blob = new Blob([outBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = newName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          
+          setMsg(`✅ Gotowe! Zaktualizowano wiersz ${targetRowNumber} (odnaleźliśmy pierwszą komórkę SKU: ${targetWorksheet.getRow(targetRowNumber).getCell(1).text}). ${updatedCount} kolumn wypełnionych. Zapisano: ${newName}`);
         } catch (err) {
           console.error(err);
           setMsg("❌ Błąd przetwarzania pliku: " + err.message);
