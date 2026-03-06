@@ -279,6 +279,35 @@ function CategoryBrowser({ btg, selectedCategory, setSelectedCategory }) {
   );
 }
 
+function CopyBtn({ text, label }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+  return (
+    <button onClick={copy} title={`Kopiuj ${label || ""}`} style={{
+      background: copied ? "#22c55e20" : "#1e2028", border: `1px solid ${copied ? "#22c55e50" : "#2a2d35"}`,
+      borderRadius: 6, padding: "4px 8px", cursor: "pointer", fontSize: 12,
+      color: copied ? "#22c55e" : S.muted, display: "inline-flex", alignItems: "center", gap: 4,
+      transition: "all 0.2s", whiteSpace: "nowrap",
+    }}>
+      {copied ? "✓ Skopiowano" : "📋 Kopiuj"}
+    </button>
+  );
+}
+
+function SectionHead({ children, copyText, copyLabel }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+      <SectionLabel>{children}</SectionLabel>
+      {copyText && <CopyBtn text={copyText} label={copyLabel} />}
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════
    LISTING PREVIEW + SCORE
    ═══════════════════════════════════════════ */
@@ -291,6 +320,8 @@ function ListingPreview({ listing }) {
   const bBytes = byteCount(listing.backendKeywords);
   const backendScore = Math.min(100, Math.round((bBytes / 250) * 100));
   const overall = Math.round((titleScore + bulletScore + backendScore) / 3);
+
+  const allBullets = listing.bullets.filter(b => b.trim()).join("\n");
 
   return (
     <Card>
@@ -305,7 +336,7 @@ function ListingPreview({ listing }) {
       </div>
 
       <div style={{ marginBottom: 20 }}>
-        <SectionLabel>Podgląd tytułu</SectionLabel>
+        <SectionHead copyText={listing.title} copyLabel="tytuł">Podgląd tytułu</SectionHead>
         <div style={{ fontSize: 18, fontWeight: 600, color: "#0066c0", lineHeight: 1.4, fontFamily: S.font }}>
           {listing.title || <span style={{ color: "#3a3d45", fontStyle: "italic" }}>Wpisz tytuł powyżej...</span>}
         </div>
@@ -316,27 +347,31 @@ function ListingPreview({ listing }) {
       </div>
 
       <div style={{ marginBottom: 20 }}>
-        <SectionLabel>Punkty kluczowe (Bullet Points)</SectionLabel>
+        <SectionHead copyText={allBullets} copyLabel="wszystkie punkty">Punkty kluczowe (Bullet Points)</SectionHead>
         {listing.bullets.map((b, i) => (
           <div key={i} style={{
             padding: "8px 12px", marginBottom: 6, background: "#0d0e14", borderRadius: 6,
             borderLeft: `3px solid ${b.trim() ? S.accent : S.border}`,
             fontSize: 13, color: b.trim() ? S.text : "#3a3d45", lineHeight: 1.5, fontFamily: S.font,
-          }}>{b.trim() || `Punkt ${i + 1} — ${BULLET_THEMES[i]}`}</div>
+            display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8,
+          }}>
+            <span style={{ flex: 1 }}>{b.trim() || `Punkt ${i + 1} — ${BULLET_THEMES[i]}`}</span>
+            {b.trim() && <CopyBtn text={b} />}
+          </div>
         ))}
         <div style={{ marginTop: 4 }}><CharBadge current={listing.bullets.join("").length} max={1000} label="Łącznie znaków" /></div>
       </div>
 
       {listing.description && (
         <div style={{ marginBottom: 20 }}>
-          <SectionLabel>Opis produktu</SectionLabel>
+          <SectionHead copyText={listing.description} copyLabel="opis">Opis produktu</SectionHead>
           <div style={{ fontSize: 13, color: "#c4c8d0", lineHeight: 1.6, fontFamily: S.font }} dangerouslySetInnerHTML={{ __html: (listing.description || "").replace(/</g, "&lt;").replace(/&lt;br\s*\/?>/gi, "<br>") }} />
         </div>
       )}
 
       {listing.backendKeywords && (
         <div>
-          <SectionLabel>Słowa kluczowe backend (Search Terms)</SectionLabel>
+          <SectionHead copyText={listing.backendKeywords} copyLabel="backend keywords">Słowa kluczowe backend (Search Terms)</SectionHead>
           <div style={{ padding: 12, background: "#0d0e14", borderRadius: 8, fontSize: 12, color: "#a1a5ae", fontFamily: S.mono, wordBreak: "break-all", lineHeight: 1.6 }}>
             {listing.backendKeywords}
           </div>
