@@ -352,46 +352,44 @@ function ExcelInjector({ listing }) {
             return;
           }
           setMsg("📂 Wczytywanie skoroszytu...");
-          const buffer = new Uint8Array(evt.target.result);
+          // Używamy bezpośredniego ArrayBuffer
+          const buffer = evt.target.result;
           const workbook = new window.ExcelJS.Workbook();
           await workbook.xlsx.load(buffer);
 
           let targetWorksheet = null;
           let headerRowNumber = -1;
-          let headersMap = {}; 
+          let headersFound = []; // [{ col: 5, key: 'title' }]
 
-          const sheets = workbook.worksheets;
-          for (let s = 0; s < sheets.length; s++) {
-            const worksheet = sheets[s];
-            if (targetWorksheet) break;
+          // Bezpieczniejsza iteracja po arkuszach
+          workbook.eachSheet((worksheet) => {
+            if (targetWorksheet) return;
             
-            for (let i = 1; i <= 15; i++) {
+            // Skanujemy pierwsze 20 wierszy dla pewności
+            for (let i = 1; i <= 20; i++) {
               const row = worksheet.getRow(i);
-              if (!row) continue;
+              if (!row || !row.values || row.values.length === 0) continue;
               
               let foundTitleCol = false;
-              let tempHeadersMap = {};
+              let currentHeaders = [];
               
-              const cellCount = row.cellCount || 100;
-              for (let c = 1; c <= cellCount; c++) {
-                 const cell = row.getCell(c);
-                 if (!cell || !cell.value) continue;
-                 const cellText = cell.text || cell.value.toString();
-                 const mappedKey = searchAlias(cellText);
-                 if (mappedKey) {
-                   if (mappedKey === 'title') foundTitleCol = true;
-                   tempHeadersMap[c] = mappedKey;
-                 }
-              }
+              row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+                const cellText = (cell.text || "").toString();
+                const mappedKey = searchAlias(cellText);
+                if (mappedKey) {
+                  if (mappedKey === 'title') foundTitleCol = true;
+                  currentHeaders.push({ col: colNumber, key: mappedKey });
+                }
+              });
 
               if (foundTitleCol) {
                 targetWorksheet = worksheet;
                 headerRowNumber = i;
-                headersMap = tempHeadersMap;
+                headersFound = currentHeaders;
                 break;
               }
             }
-          }
+          });
           
           if (!targetWorksheet || headerRowNumber === -1) {
             setMsg("❌ Nie odnaleziono systemowych nagłówków Amazona w żadnym arkuszu.");
@@ -427,17 +425,16 @@ function ExcelInjector({ listing }) {
           };
           
           let updatedCount = 0;
-          for (const [colNumStr, mappedKey] of Object.entries(headersMap)) {
-             const colNumber = parseInt(colNumStr, 10);
-             const val = getListingValue(mappedKey);
-             if (val) {
-                 const cell = targetRow.getCell(colNumber);
+          headersFound.forEach(h => {
+             const val = getListingValue(h.key);
+             if (val !== undefined) {
+                 const cell = targetRow.getCell(h.col);
                  cell.value = val;
                  updatedCount++;
              }
-          }
+          });
           
-          // Zapisanie zmodyfikowanego wiersza z powrotem do pliku
+          // Zapisanie zmodyfikowanego wiersza
           targetRow.commit();
           
           const outBuffer = await workbook.xlsx.writeBuffer();
@@ -455,10 +452,11 @@ function ExcelInjector({ listing }) {
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
           
-          setMsg(`✅ Gotowe! Zaktualizowano wiersz ${targetRowNumber} (odnaleźliśmy pierwszą komórkę SKU: ${targetWorksheet.getRow(targetRowNumber).getCell(1).text}). ${updatedCount} kolumn wypełnionych. Zapisano: ${newName}`);
+          setMsg(`✅ Gotowe! Wstrzyknięto dane do wiersza nr ${targetRowNumber}. Zaktualizowano ${updatedCount} kolumn. Zapisano jako: ${newName}`);
         } catch (err) {
-          console.error(err);
-          setMsg("❌ Błąd przetwarzania pliku: " + err.message);
+          console.error("Excel Injector Error:", err);
+          const errStr = String(err.message || err);
+          setMsg("❌ Błąd przetwarzania: " + (errStr.length > 60 ? errStr.slice(0, 60) + "..." : errStr) + " (Spróbuj odświeżyć stronę lub użyć trybu Incognito)");
         }
       };
       reader.readAsArrayBuffer(file);
@@ -474,9 +472,11 @@ function ExcelInjector({ listing }) {
       <div style={{ fontSize: 14, fontWeight: 700, color: "#22c55e", marginBottom: 8, display: "flex", gap: 8 }}>
         <span style={{ fontSize: 16 }}>📥</span> Wstrzyknij listing do szablonu Amazon (Flat File)
       </div>
-      <div style={{ fontSize: 12, color: "#c4c8d0", marginBottom: 16, lineHeight: 1.5 }}>
-        Pobierz pusty plik "Inventory File" (Excel / xlsm / xlsx) ze strony dodawania produktu na Amazon (Seller Central). <br/>
-        Wgraj go tutaj — aplikacja odnajdzie ukryte w nim wbudowane techniczne kolumny (np. <span style={{ fontFamily: "monospace", color: "#60a5fa"}}>item_name</span>) i wstawi w odpowiednie komórki wygenerowany właśnie przez AI listing (zajmując <strong style={{color:"#fff"}}>wiersz nr 4</strong> zapisu). Otrzymasz natychmiast gotowy do podmiany nowy plik.
+      <div style={{ fontSize: 13, color: "#a1a5ae", lineHeight: 1.5, marginBottom: 16 }}>
+        Pobierz pusty plik "Inventory File" (Excel / xlsm / xlsx) ze strony dodawania produktu na Amazon (Seller Central). 
+        Wgraj go tutaj — aplikacja odnajdzie ukryte w nim wbudowane techniczne kolumny (np. <code style={{color:S.accent}}>item_name</code>) 
+        i wstawi w odpowiednie komórki wygenerowany właśnie przez AI listing (zajmując <strong style={{color:"#fff"}}>wykryty wiersz z Twoimi danymi</strong>). 
+        Otrzymasz natychmiast gotowy do podmiany nowy plik.
       </div>
       
       <label style={{
