@@ -114,58 +114,6 @@ function checkForbiddenWords(text, forbiddenList) {
   return issues;
 }
 
-async function detectCategoryFromListing(listing, btgData, mp, provider, apiKey, geminiKey) {
-  if (!btgData?.category_attrs || !listing.title) return null;
-
-  const categoryList = Object.entries(btgData.category_attrs)
-    .slice(0, 50) // Limit to most common categories
-    .map(([id, info]) => `${info.item_type}: ${info.path}`)
-    .join("\n");
-
-  const detectPrompt = `You are analyzing an Amazon product listing and need to determine which product category it belongs to from the Browse Tree Guide.
-
-LISTING:
-- Title: ${listing.title}
-- Bullet 1: ${listing.bullet1 || ""}
-- Bullet 2: ${listing.bullet2 || ""}
-- Backend Keywords: ${listing.backendKeywords || ""}
-
-AVAILABLE CATEGORIES (item_type_keyword):
-${categoryList}
-
-Based on the listing content, determine the BEST matching category item_type_keyword from the list above.
-
-Respond with ONLY the item_type_keyword (e.g., "bath-linen-sets", "kitchen-knives", etc.). Nothing else.`;
-
-  try {
-    const activeKey = provider === "gemini" ? geminiKey : apiKey;
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${activeKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: provider === "gemini" ? "gemini-2.5-flash" : "meta-llama/llama-4-scout-17b-16e-instruct",
-        messages: [{ role: "user", content: detectPrompt }],
-        max_tokens: 50,
-        temperature: 0.3,
-      }),
-    });
-
-    if (!response.ok) return null;
-    const data = await response.json();
-    const itemType = (data.choices?.[0]?.message?.content || "").trim().toLowerCase();
-
-    // Find matching category ID
-    for (const [id, info] of Object.entries(btgData.category_attrs)) {
-      if (info.item_type?.toLowerCase() === itemType) {
-        return id;
-      }
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
 function byteCount(s) { return new TextEncoder().encode(s || "").length; }
 
 // German stemmer for inflected form detection
@@ -1160,7 +1108,7 @@ ${compatTitle || compatBulletExt ? `COMPATIBILITY INFORMATION (for marketplace $
   - PL: "Kompatybilny z"
 - CRITICAL: Bullet #5 MUST focus ONLY on compatibility. Use format: "Kompatibel mit [devices] – Diese Filter sind speziell entwickelt und getestet für [type]. Perfekte Ergänzung für [use cases]."
 - Include compatibility info in title ONLY if space available AFTER all other required info (after character 70).` : ""}
-${catInfo ? `CATEGORY: ${catInfo.path}\nitem_type_keyword: ${catInfo.item_type}\nCategory attributes: ${catInfo.attrs.join(", ")}${categoryAttrs && Object.keys(categoryAttrs).length > 0 ? `\nCategory attribute values provided by user:\n${Object.entries(categoryAttrs).filter(([,v]) => v).map(([k, v]) => `- ${ATTR_LABELS[k] || k}: ${v}`).join("\n")}\n\nUse these attribute values naturally in the title and bullets where relevant.` : ""}` : ""}
+${catInfo ? `CATEGORY: ${catInfo.path}\nitem_type_keyword: ${catInfo.item_type}\nCategory attributes: ${catInfo.attrs.join(", ")}` : ""}
 ${csvKeywords ? `\nHELIUM 10 KEYWORD DATA (sorted by search volume):\n${csvKeywords.slice(0, 30).map((k, i) => `${i + 1}. "${k.keyword}" (vol: ${k.volume})`).join("\n")}\nUse the top keywords strategically: #1-3 in title, #4-15 in bullets, rest in backend/description.` : ""}
 ${uploadedFiles.filter(f => f.type === "text").length > 0 ? `\nADDITIONAL PRODUCT INFORMATION FROM UPLOADED FILES (NOTE: these files may be in a different language than the target marketplace — use them ONLY as an information source, extract product details from them, but ALWAYS write the listing in ${mp.langEn}):\n${uploadedFiles.filter(f => f.type === "text").map(f => `--- ${f.name} ---\n${f.content.slice(0, 3000)}`).join("\n\n")}` : ""}
 ${imageData.length > 0 ? `\nIMAGES ATTACHED: ${imageData.length} image(s) showing the product. Analyze them carefully to extract product details, features, text, specifications, and any visible information that should be included in the listing.` : ""}
@@ -1691,17 +1639,6 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
       onSaveListing?.(newListing, marketplace, productInfo);
       setReferenceBullets([parsed.bullet1||"", parsed.bullet2||"", parsed.bullet3||"", parsed.bullet4||"", parsed.bullet5||""]);
       setReferenceDescription(parsed.description || "");
-
-      // Auto-detect category from generated listing
-      setStatus("Wykrywanie kategorii produktu...");
-      if (btg) {
-        const detectedCategoryId = await detectCategoryFromListing(newListing, btg, mp, provider, apiKey, geminiKey);
-        if (detectedCategoryId) {
-          setSelectedCategory(detectedCategoryId);
-          setCategoryAttrs({}); // Clear any previous entries
-        }
-      }
-
       setStatus("");
     } catch (e) {
       const msg = e.message || "";
@@ -1744,33 +1681,6 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
       <Field label="Dodatkowe słowa kluczowe (Secondary Keywords)" value={secondaryKeywords} onChange={setSecondaryKeywords}
         placeholder="np. Thermomix Zubehör, Rutschfest, Acryl Unterlage..."
         helper="Oddzielone przecinkami. Zostaną wplecione w dalszą część tytułu, bullety i opis." />
-
-      {/* Category Attributes Section */}
-      {selectedCategory && btg?.category_attrs[selectedCategory] && btg.category_attrs[selectedCategory].attrs.length > 0 && (
-        <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${S.border}` }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: S.accent, marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
-            📦 ATRYBUTY KATEGORII (AUTOMATYCZNIE WYKRYTE)
-          </div>
-          <div style={{ fontSize: 11, color: "#22c55e", marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
-            <span>✓</span>
-            <span><strong>{btg.category_attrs[selectedCategory].path || "Kategoria"}</strong></span>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-            {btg.category_attrs[selectedCategory].attrs.map(attr => (
-              <Field
-                key={attr}
-                label={ATTR_LABELS[attr] || attr}
-                value={categoryAttrs[attr] || ""}
-                onChange={v => setCategoryAttrs({...categoryAttrs, [attr]: v})}
-                placeholder={`np. ${attr === "color_map" ? "Czarny" : attr === "size_name" ? "Medium" : "wartość"}`}
-              />
-            ))}
-          </div>
-          <div style={{ fontSize: 11, color: S.muted, fontStyle: "italic" }}>
-            Dostępne atrybuty: {btg.category_attrs[selectedCategory].attrs.map(a => ATTR_LABELS[a] || a).join(", ")}
-          </div>
-        </div>
-      )}
 
       {/* Compatibility Section */}
       <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${S.border}` }}>
