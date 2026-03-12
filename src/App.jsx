@@ -791,7 +791,7 @@ function SettingsPanel({ provider, setProvider, apiKey, setApiKey, geminiKey, se
    AI GENERATE PANEL
    ═══════════════════════════════════════════ */
 
-function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, geminiKey, model, btg, selectedCategory, onSaveListing }) {
+function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, geminiKey, model, btg, selectedCategory, secondaryKeywords, setSecondaryKeywords, onSaveListing }) {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [productInfo, setProductInfo] = useState("");
@@ -800,7 +800,6 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, g
   const [brand, setBrand] = useState("");
 
   const [mainKeyword, setMainKeyword] = useState("");
-  const [secondaryKeywords, setSecondaryKeywords] = useState("");
   const [error, setError] = useState("");
   const [csvKeywords, setCsvKeywords] = useState(null);
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -1650,6 +1649,7 @@ export default function App() {
   const [model, setModel] = useState("meta-llama/llama-4-scout-17b-16e-instruct");
   const [btg, setBtg] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [secondaryKeywords, setSecondaryKeywords] = useState("");
   const [listing, setListing] = useState({
     title: "", bullets: ["", "", "", "", ""], description: "", backendKeywords: "", brand: "",
   });
@@ -1757,6 +1757,7 @@ export default function App() {
             <>
               <AIGeneratePanel listing={listing} setListing={setListing} marketplace={marketplace}
                 provider={provider} apiKey={apiKey} geminiKey={geminiKey} model={model} btg={btg} selectedCategory={selectedCategory}
+                secondaryKeywords={secondaryKeywords} setSecondaryKeywords={setSecondaryKeywords}
                 onSaveListing={saveToHistory} />
               {listing.title && <ListingPreview listing={listing} />}
               {csvKeywords && listing.title && <KeywordUsageTable keywords={csvKeywords} listing={listing} secondaryKeywords={secondaryKeywords} setSecondaryKeywords={setSecondaryKeywords} />}
