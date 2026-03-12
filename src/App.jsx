@@ -385,6 +385,139 @@ function ListingPreview({ listing }) {
 }
 
 /* ═══════════════════════════════════════════
+   KEYWORD USAGE TABLE
+   ═══════════════════════════════════════════ */
+
+function KeywordUsageTable({ keywords, listing }) {
+  if (!keywords?.length || !listing?.title) return null;
+  const top = keywords.slice(0, 30);
+  const check = (text, kw) => (text || "").toLowerCase().includes(kw.toLowerCase());
+
+  return (
+    <Card style={{ marginTop: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+        <span style={{ fontSize: 20 }}>📊</span>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: S.text, fontFamily: S.font }}>Tabela użycia słów kluczowych</div>
+          <div style={{ fontSize: 11, color: S.dim }}>Top {top.length} słów kluczowych z Helium 10 — gdzie zostały użyte w listingu</div>
+        </div>
+      </div>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, fontFamily: S.mono }}>
+          <thead>
+            <tr style={{ background: "#0d0e14" }}>
+              <th style={{ padding: "8px 10px", textAlign: "left", color: S.muted, fontWeight: 600, borderBottom: `1px solid ${S.border}`, whiteSpace: "nowrap" }}>#</th>
+              <th style={{ padding: "8px 12px", textAlign: "left", color: S.muted, fontWeight: 600, borderBottom: `1px solid ${S.border}` }}>Słowo kluczowe</th>
+              <th style={{ padding: "8px 10px", textAlign: "right", color: S.muted, fontWeight: 600, borderBottom: `1px solid ${S.border}`, whiteSpace: "nowrap" }}>Wolumen</th>
+              <th style={{ padding: "8px 10px", textAlign: "center", color: S.muted, fontWeight: 600, borderBottom: `1px solid ${S.border}` }}>Tytuł</th>
+              {[1, 2, 3, 4, 5].map(n => (
+                <th key={n} style={{ padding: "8px 8px", textAlign: "center", color: S.muted, fontWeight: 600, borderBottom: `1px solid ${S.border}`, whiteSpace: "nowrap" }}>BP{n}</th>
+              ))}
+              <th style={{ padding: "8px 10px", textAlign: "center", color: S.muted, fontWeight: 600, borderBottom: `1px solid ${S.border}` }}>Backend</th>
+            </tr>
+          </thead>
+          <tbody>
+            {top.map((kw, idx) => {
+              const inTitle = check(listing.title, kw.keyword);
+              const inBullets = listing.bullets.map(b => check(b, kw.keyword));
+              const inBackend = check(listing.backendKeywords, kw.keyword);
+              const used = inTitle || inBullets.some(Boolean) || inBackend;
+              return (
+                <tr key={kw.keyword} style={{ borderBottom: `1px solid #1a1b24`, background: used ? "transparent" : "#1a0e0e" }}>
+                  <td style={{ padding: "7px 10px", color: S.dim }}>{idx + 1}</td>
+                  <td style={{ padding: "7px 12px", color: used ? S.text : "#ef4444", fontWeight: used ? 400 : 600 }}>
+                    {kw.keyword}
+                    {!used && <span style={{ marginLeft: 6, fontSize: 10, color: "#ef4444", opacity: 0.7 }}>nie użyte</span>}
+                  </td>
+                  <td style={{ padding: "7px 10px", textAlign: "right", color: S.muted }}>{kw.volume > 0 ? kw.volume.toLocaleString() : "—"}</td>
+                  <td style={{ padding: "7px 10px", textAlign: "center" }}>
+                    {inTitle ? <span style={{ color: "#22c55e", fontWeight: 700 }}>✓</span> : <span style={{ color: "#2a2d35" }}>·</span>}
+                  </td>
+                  {inBullets.map((v, i) => (
+                    <td key={i} style={{ padding: "7px 8px", textAlign: "center" }}>
+                      {v ? <span style={{ color: "#22c55e", fontWeight: 700 }}>✓</span> : <span style={{ color: "#2a2d35" }}>·</span>}
+                    </td>
+                  ))}
+                  <td style={{ padding: "7px 10px", textAlign: "center" }}>
+                    {inBackend ? <span style={{ color: "#22c55e", fontWeight: 700 }}>✓</span> : <span style={{ color: "#2a2d35" }}>·</span>}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   HISTORY PANEL
+   ═══════════════════════════════════════════ */
+
+function HistoryPanel({ entries, onLoad, onDelete }) {
+  if (!entries.length) {
+    return (
+      <Card>
+        <div style={{ textAlign: "center", padding: "40px 20px", color: S.dim }}>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>📋</div>
+          <div style={{ fontSize: 14, color: S.muted, fontFamily: S.font }}>Brak zapisanych listingów</div>
+          <div style={{ fontSize: 12, marginTop: 6, fontFamily: S.font }}>Wygenerowane listingi pojawią się tutaj automatycznie.</div>
+        </div>
+      </Card>
+    );
+  }
+  return (
+    <Card>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+        <span style={{ fontSize: 20 }}>📋</span>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: S.text, fontFamily: S.font }}>Historia listingów</div>
+          <div style={{ fontSize: 11, color: S.dim }}>{entries.length}/15 zapisanych · kliknij „Załaduj" aby przywrócić</div>
+        </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {entries.map(entry => {
+          const mp = MARKETPLACES.find(m => m.code === entry.marketplace);
+          const date = new Date(entry.timestamp);
+          const dateStr = date.toLocaleString("pl-PL", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
+          return (
+            <div key={entry.id} style={{
+              padding: "12px 14px", background: "#0d0e14", borderRadius: 10,
+              border: `1px solid ${S.border}`, display: "flex", gap: 12, alignItems: "center",
+            }}>
+              <div style={{ fontSize: 20, minWidth: 30 }}>{mp?.flags.join("") || "🌐"}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, color: S.text, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: S.font }}>
+                  {entry.title || entry.productHint || "Bez tytułu"}
+                </div>
+                <div style={{ fontSize: 11, color: S.dim, marginTop: 3, fontFamily: S.font }}>
+                  {mp?.name || entry.marketplace} · {dateStr}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                <button onClick={() => onLoad(entry)} style={{
+                  padding: "6px 12px", background: "#ff990015", border: `1px solid #ff990030`,
+                  borderRadius: 6, color: S.accent, fontSize: 12, cursor: "pointer", fontWeight: 600, fontFamily: S.font,
+                }}>
+                  Załaduj
+                </button>
+                <button onClick={() => onDelete(entry.id)} style={{
+                  padding: "6px 10px", background: "#1e2028", border: `1px solid ${S.border}`,
+                  borderRadius: 6, color: S.dim, fontSize: 12, cursor: "pointer", fontFamily: S.font,
+                }}>
+                  ✕
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+/* ═══════════════════════════════════════════
    SETTINGS PANEL
    ═══════════════════════════════════════════ */
 
@@ -490,7 +623,7 @@ function SettingsPanel({ provider, setProvider, apiKey, setApiKey, geminiKey, se
    AI GENERATE PANEL
    ═══════════════════════════════════════════ */
 
-function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, geminiKey, model, btg, selectedCategory }) {
+function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, geminiKey, model, btg, selectedCategory, onSaveListing }) {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [productInfo, setProductInfo] = useState("");
@@ -1123,13 +1256,15 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
         }
       }
 
-      setListing({
+      const newListing = {
         title: parsed.title || "",
         bullets: [parsed.bullet1||"", parsed.bullet2||"", parsed.bullet3||"", parsed.bullet4||"", parsed.bullet5||""],
         description: parsed.description || "",
         backendKeywords: parsed.backendKeywords || "",
         brand: parsed.brand || brand || "",
-      });
+      };
+      setListing(newListing);
+      onSaveListing?.(newListing, marketplace, productInfo);
       setReferenceBullets([parsed.bullet1||"", parsed.bullet2||"", parsed.bullet3||"", parsed.bullet4||"", parsed.bullet5||""]);
       setReferenceDescription(parsed.description || "");
       setStatus("");
@@ -1149,6 +1284,7 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
   }
 
   return (
+    <>
     <Card style={{ background: "linear-gradient(135deg, #1a1320 0%, #15161e 50%, #131820 100%)", marginBottom: 24 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
         <div style={{
@@ -1287,6 +1423,8 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
         ) : (<>⚡ Wygeneruj listing</>)}
       </button>
     </Card>
+    {csvKeywords && listing.title && <KeywordUsageTable keywords={csvKeywords} listing={listing} />}
+    </>
   );
 }
 
@@ -1337,6 +1475,39 @@ export default function App() {
   const [listing, setListing] = useState({
     title: "", bullets: ["", "", "", "", ""], description: "", backendKeywords: "", brand: "",
   });
+  const [savedListings, setSavedListings] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("amz-listing-history") || "[]"); } catch { return []; }
+  });
+
+  function saveToHistory(newListing, mp, hint) {
+    const entry = {
+      id: Date.now(),
+      marketplace: mp,
+      timestamp: new Date().toISOString(),
+      title: newListing.title.slice(0, 120),
+      productHint: (hint || "").slice(0, 60),
+      listing: newListing,
+    };
+    setSavedListings(prev => {
+      const updated = [entry, ...prev].slice(0, 15);
+      try { localStorage.setItem("amz-listing-history", JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  }
+
+  function deleteFromHistory(id) {
+    setSavedListings(prev => {
+      const updated = prev.filter(e => e.id !== id);
+      try { localStorage.setItem("amz-listing-history", JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  }
+
+  function loadFromHistory(entry) {
+    setListing(entry.listing);
+    setMarketplace(entry.marketplace);
+    setTab("generate");
+  }
 
   // Load BTG data
   useEffect(() => {
@@ -1396,6 +1567,9 @@ export default function App() {
           <TabBtn active={tab === "generate"} onClick={() => setTab("generate")} icon="⚡">Generuj z AI</TabBtn>
           <TabBtn active={tab === "manual"} onClick={() => setTab("manual")} icon="✏️">Edytor ręczny</TabBtn>
           <TabBtn active={tab === "preview"} onClick={() => setTab("preview")} icon="👁">Podgląd i ocena</TabBtn>
+          <TabBtn active={tab === "history"} onClick={() => setTab("history")} icon="📋">
+            Historia {savedListings.length > 0 && <span style={{ background: S.accent, color: S.bg, borderRadius: 10, padding: "1px 6px", fontSize: 11, fontWeight: 700 }}>{savedListings.length}</span>}
+          </TabBtn>
           <TabBtn active={tab === "settings"} onClick={() => setTab("settings")} icon="⚙️">Ustawienia</TabBtn>
         </div>
 
@@ -1404,12 +1578,14 @@ export default function App() {
           {tab === "generate" && (
             <>
               <AIGeneratePanel listing={listing} setListing={setListing} marketplace={marketplace}
-                provider={provider} apiKey={apiKey} geminiKey={geminiKey} model={model} btg={btg} selectedCategory={selectedCategory} />
+                provider={provider} apiKey={apiKey} geminiKey={geminiKey} model={model} btg={btg} selectedCategory={selectedCategory}
+                onSaveListing={saveToHistory} />
               {listing.title && <ListingPreview listing={listing} />}
             </>
           )}
           {tab === "manual" && <ManualEditor listing={listing} setListing={setListing} />}
           {tab === "preview" && <ListingPreview listing={listing} />}
+          {tab === "history" && <HistoryPanel entries={savedListings} onLoad={loadFromHistory} onDelete={deleteFromHistory} />}
           {tab === "settings" && <SettingsPanel provider={provider} setProvider={setProvider} apiKey={apiKey} setApiKey={setApiKey} geminiKey={geminiKey} setGeminiKey={setGeminiKey} model={model} setModel={setModel} />}
         </div>
 
