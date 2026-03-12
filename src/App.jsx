@@ -355,7 +355,6 @@ function CategoryBrowser({ btg, selectedCategory, setSelectedCategory, categoryL
             ))}
           </div>
         )}
-      </div>
 
       {selCat && (
         <div style={{ animation: "fadeIn 0.3s ease" }}>
