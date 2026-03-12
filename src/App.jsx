@@ -839,6 +839,8 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, g
   const [referenceBullets, setReferenceBullets] = useState(null);
   const [referenceDescription, setReferenceDescription] = useState(null);
   const [brand, setBrand] = useState("");
+  const [compatibilityTitle, setCompatibilityTitle] = useState("");
+  const [compatibilityBulletExt, setCompatibilityBulletExt] = useState("");
 
   const [mainKeyword, setMainKeyword] = useState("");
   const [error, setError] = useState("");
@@ -989,7 +991,7 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, g
     }
   }
 
-  function buildPrompt(mp, catInfo, brandValue) {
+  function buildPrompt(mp, catInfo, brandValue, compatTitle, compatBulletExt) {
     return `You are a world-class Amazon listing optimizer specializing in European marketplaces. You have deep expertise in Amazon's A9/A10 algorithm, Rufus, and Cosmo AI systems.
 
 TARGET MARKETPLACE: ${mp.code} (${mp.langEn})
@@ -1001,6 +1003,19 @@ ${productInfo}
 ${brandValue ? `BRAND: ${brandValue}` : ""}
 ${mainKeyword ? `PRIMARY KEYWORD (MUST appear in the first 70 characters of the title, ideally as the first descriptive words after the brand): ${mainKeyword}` : "No primary keyword provided — determine the best primary keyword yourself based on the product."}
 ${secondaryKeywords ? `SECONDARY KEYWORDS (weave these into the title after char 70, into bullet points, and description naturally): ${secondaryKeywords}` : "No secondary keywords provided — determine the best secondary keywords yourself."}
+${compatTitle || compatBulletExt ? `COMPATIBILITY INFORMATION (for marketplace ${mp.code}):
+- User provided: ${[compatTitle, compatBulletExt].filter(Boolean).join(" + ")}
+- Language rules:
+  - EN: "Compatible with"
+  - DE: "Kompatibel mit"
+  - FR: "Compatible avec"
+  - IT: "Compatibile con"
+  - ES: "Compatible con"
+  - NL: "Compatibel met"
+  - SE: "Kompatibel med"
+  - PL: "Kompatybilny z"
+- CRITICAL: Bullet #5 MUST focus ONLY on compatibility. Use format: "Kompatibel mit [devices] – Diese Filter sind speziell entwickelt und getestet für [type]. Perfekte Ergänzung für [use cases]."
+- Include compatibility info in title ONLY if space available AFTER all other required info (after character 70).` : ""}
 ${catInfo ? `CATEGORY: ${catInfo.path}\nitem_type_keyword: ${catInfo.item_type}\nCategory attributes: ${catInfo.attrs.join(", ")}` : ""}
 ${csvKeywords ? `\nHELIUM 10 KEYWORD DATA (sorted by search volume):\n${csvKeywords.slice(0, 30).map((k, i) => `${i + 1}. "${k.keyword}" (vol: ${k.volume})`).join("\n")}\nUse the top keywords strategically: #1-3 in title, #4-15 in bullets, rest in backend/description.` : ""}
 ${uploadedFiles.filter(f => f.type === "text").length > 0 ? `\nADDITIONAL PRODUCT INFORMATION FROM UPLOADED FILES (NOTE: these files may be in a different language than the target marketplace — use them ONLY as an information source, extract product details from them, but ALWAYS write the listing in ${mp.langEn}):\n${uploadedFiles.filter(f => f.type === "text").map(f => `--- ${f.name} ---\n${f.content.slice(0, 3000)}`).join("\n\n")}` : ""}
@@ -1031,6 +1046,7 @@ ${brandValue ? `- BRAND PLACEMENT: You MUST start the title exactly with the bra
 - Include 2-3 keyword phrases naturally in the title. Use dashes (–) to separate logical sections.
 - PROHIBITED: No ! $ ? _ { } ^ ¬ ¦ characters. No ALL CAPS. No promotional phrases ("best seller", "free shipping"). No word repeated more than 2 times. No emojis.
 - Use numerals ("2" not "two"). Capitalize first letter of each word except prepositions/conjunctions/articles.
+${compatTitle || compatBulletExt ? `- COMPATIBILITY IN TITLE: If you have space AFTER character 70 (after all primary/secondary keywords), consider adding top 1-2 compatible brands/models. Example structure: "[Primary Keyword] – [Feature] – Kompatibel mit [Top Model]" (only if it fits within 200 chars).` : ""}
 
 ═══════════════════════════════════════
 BULLET POINTS RULES (5 bullets)
@@ -1048,7 +1064,7 @@ BULLET POINTS RULES (5 bullets)
   Bullet 2. Quality / materials / durability (What it's made of and why it lasts)
   Bullet 3. Ease of use / convenience / installation (How simple it is to use)
   Bullet 4. Compatibility / versatility / dimensions (Where it fits and exact sizes)
-  Bullet 5. Safety / certifications / warranty / what's included (Why it's a safe purchase)
+${compatTitle || compatBulletExt ? `  Bullet 5. COMPATIBILITY FOCUS: This product is compatible with [list from compatibility field]. Emphasize quality, fit, durability with those devices.` : `  Bullet 5. Safety / certifications / warranty / what's included (Why it's a safe purchase)`}
 - Under each theme, include SPECIFIC details from the product info: measurements, materials, certifications, compatible products. Do not use generic fluff.
 - Speak to the customer's needs: what problem does this solve? What do they gain?
 - Weave in secondary keywords naturally — never keyword-stuff.
@@ -1136,7 +1152,7 @@ Double-check: Is every word in your JSON response written in ${mp.langEn}? If no
     try {
       const mp = MARKETPLACES.find(m => m.code === marketplace);
       const catInfo = selectedCategory && btg?.category_attrs[selectedCategory];
-      const prompt = buildPrompt(mp, catInfo, brand);
+      const prompt = buildPrompt(mp, catInfo, brand, compatibilityTitle, compatibilityBulletExt);
 
       // Build message with optional images
       let userContent;
@@ -1536,6 +1552,21 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
       <Field label="Dodatkowe słowa kluczowe (Secondary Keywords)" value={secondaryKeywords} onChange={setSecondaryKeywords}
         placeholder="np. Thermomix Zubehör, Rutschfest, Acryl Unterlage..."
         helper="Oddzielone przecinkami. Zostaną wplecione w dalszą część tytułu, bullety i opis." />
+
+      {/* Compatibility Section */}
+      <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${S.border}` }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: S.accent, marginBottom: 14, display: "flex", alignItems: "center", gap: 6 }}>
+          🔗 KOMPATYBILNOŚĆ (OPCJONALNIE)
+        </div>
+        <Field label="Kompatybilność w tytule i Bullet #5" value={compatibilityTitle} onChange={setCompatibilityTitle}
+          multiline
+          placeholder="np. DeLonghi DLS C002, Philips XL1000, uniwersalny entkalker..."
+          helper="Modele/urządzenia kompatybilne z produktem. Zostaną wplecione w tytuł (jeśli miejsce) i Bullet #5." />
+        <Field label="Kompatybilność w Bullet #5 (poszerzenie)" value={compatibilityBulletExt} onChange={setCompatibilityBulletExt}
+          multiline
+          placeholder="np. DeLonghi Magnifica, Siemens, Bosch..."
+          helper="Dodatkowe urządzenia, jeśli miejsce w tytule za małe. Wszystko ląduje w Bullet #5 razem z powyższymi." />
+      </div>
 
       {/* File Uploads */}
       <div style={{ marginBottom: 16, padding: 16, background: "#0d0e14", borderRadius: 12, border: `1px dashed ${S.border}` }}>
