@@ -1261,11 +1261,14 @@ Double-check: Is every word in your JSON response written in ${mp.langEn}? If no
       const uniqueWords = [...new Set(words)].slice(0, 30);
 
       // Score each category by how many words from listing match its path/item_type
+      // item_type_keyword match counts 3x more (it's the most specific identifier)
       const scored = btgData.categories.map(cat => {
-        const catText = (cat.path + " " + cat.item_type).toLowerCase();
+        const itemTypeLower = cat.item_type.toLowerCase();
+        const pathLower = cat.path.toLowerCase();
         let score = 0;
         for (const w of uniqueWords) {
-          if (catText.includes(w)) score += w.length; // Longer word match = higher score
+          if (itemTypeLower.includes(w)) score += w.length * 3; // item_type match = 3x weight
+          else if (pathLower.includes(w)) score += w.length;    // path match = 1x weight
         }
         return { ...cat, score };
       });
@@ -1288,6 +1291,13 @@ Backend Keywords: ${listing.backendKeywords}
 
 AVAILABLE CATEGORIES (best matches):
 ${categoryList}
+
+IMPORTANT RULES:
+- Choose the MOST SPECIFIC and PRECISE category for this exact product type.
+- If this is an accessory, replacement part, filter, or consumable — choose the accessory/parts/filter category, NOT the main device category.
+- Example: "water filter for coffee machine" → pick "coffee-machine-water-filters", NOT "coffee-makers".
+- Example: "replacement blade for blender" → pick "blender-accessories", NOT "blenders".
+- The item_type_keyword is the most important identifier — match it as precisely as possible.
 
 Which category from the list BEST matches this product? Respond ONLY with JSON: {"categoryId": "CATEGORY_ID_HERE"}`;
 
