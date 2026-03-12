@@ -390,25 +390,97 @@ function ListingPreview({ listing }) {
 
 function KeywordUsageTable({ keywords, listing }) {
   if (!keywords?.length || !listing?.title) return null;
-  const top = keywords.slice(0, 30);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortBy, setSortBy] = useState("volume");
+  const [sortOrder, setSortOrder] = useState("desc");
+  const [selectedKeywords, setSelectedKeywords] = useState(new Set());
+
+  const itemsPerPage = 20;
   const check = (text, kw) => (text || "").toLowerCase().includes(kw.toLowerCase());
 
+  // Sort keywords
+  let sortedKeywords = [...keywords];
+  sortedKeywords.sort((a, b) => {
+    let aVal = a[sortBy] || 0;
+    let bVal = b[sortBy] || 0;
+    if (sortBy === "keyword") {
+      aVal = a.keyword.toLowerCase();
+      bVal = b.keyword.toLowerCase();
+    }
+    return sortOrder === "desc" ? (aVal > bVal ? -1 : 1) : (aVal < bVal ? -1 : 1);
+  });
+
+  // Paginate
+  const totalPages = Math.ceil(sortedKeywords.length / itemsPerPage);
+  const pageStart = (currentPage - 1) * itemsPerPage;
+  const pageEnd = pageStart + itemsPerPage;
+  const pageKeywords = sortedKeywords.slice(pageStart, pageEnd);
+
+  const handleToggleSort = (col) => {
+    if (sortBy === col) {
+      setSortOrder(sortOrder === "desc" ? "asc" : "desc");
+    } else {
+      setSortBy(col);
+      setSortOrder("desc");
+    }
+  };
+
+  const toggleKeyword = (kw) => {
+    const newSelected = new Set(selectedKeywords);
+    if (newSelected.has(kw)) {
+      newSelected.delete(kw);
+    } else {
+      newSelected.add(kw);
+    }
+    setSelectedKeywords(newSelected);
+  };
+
+  const SortableHeader = ({ col, label, align = "left" }) => (
+    <th
+      onClick={() => handleToggleSort(col)}
+      style={{
+        padding: "8px 10px",
+        textAlign: align,
+        color: sortBy === col ? S.accent : S.muted,
+        fontWeight: 600,
+        borderBottom: `1px solid ${S.border}`,
+        whiteSpace: "nowrap",
+        cursor: "pointer",
+        background: sortBy === col ? "#1a1b2430" : "transparent",
+        transition: "all 0.2s",
+      }}
+      title="Kliknij aby sortować"
+    >
+      {label} {sortBy === col && (sortOrder === "desc" ? "↓" : "↑")}
+    </th>
+  );
+
   return (
-    <Card style={{ marginTop: 20 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-        <span style={{ fontSize: 20 }}>📊</span>
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: S.text, fontFamily: S.font }}>Tabela użycia słów kluczowych</div>
-          <div style={{ fontSize: 11, color: S.dim }}>Top {top.length} słów kluczowych z Helium 10 — gdzie zostały użyte w listingu</div>
+    <Card style={{ marginTop: 40, paddingTop: 32, borderTop: `2px solid ${S.border}` }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, justifyContent: "space-between", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 20 }}>📊</span>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: S.text, fontFamily: S.font }}>Tabela użycia słów kluczowych</div>
+            <div style={{ fontSize: 11, color: S.dim }}>{sortedKeywords.length} słów kluczowych z Helium 10 — gdzie zostały użyte w listingu</div>
+          </div>
         </div>
+        {selectedKeywords.size > 0 && (
+          <div style={{ fontSize: 12, color: S.accent, fontFamily: S.mono }}>
+            Wybrano: {selectedKeywords.size}
+          </div>
+        )}
       </div>
+
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, fontFamily: S.mono }}>
           <thead>
             <tr style={{ background: "#0d0e14" }}>
-              <th style={{ padding: "8px 10px", textAlign: "left", color: S.muted, fontWeight: 600, borderBottom: `1px solid ${S.border}`, whiteSpace: "nowrap" }}>#</th>
+              <th style={{ padding: "8px 10px", textAlign: "center", color: S.muted, fontWeight: 600, borderBottom: `1px solid ${S.border}`, whiteSpace: "nowrap", width: 30 }}>🔑</th>
               <th style={{ padding: "8px 12px", textAlign: "left", color: S.muted, fontWeight: 600, borderBottom: `1px solid ${S.border}` }}>Słowo kluczowe</th>
-              <th style={{ padding: "8px 10px", textAlign: "right", color: S.muted, fontWeight: 600, borderBottom: `1px solid ${S.border}`, whiteSpace: "nowrap" }}>Wolumen</th>
+              <SortableHeader col="volume" label="Wolumen" align="right" />
+              {keywords[0]?.cerebroScore !== undefined && <SortableHeader col="cerebroScore" label="Cerebro IQ" align="right" />}
+              {keywords[0]?.organicRank !== undefined && <SortableHeader col="organicRank" label="Org. Rank" align="right" />}
               <th style={{ padding: "8px 10px", textAlign: "center", color: S.muted, fontWeight: 600, borderBottom: `1px solid ${S.border}` }}>Tytuł</th>
               {[1, 2, 3, 4, 5].map(n => (
                 <th key={n} style={{ padding: "8px 8px", textAlign: "center", color: S.muted, fontWeight: 600, borderBottom: `1px solid ${S.border}`, whiteSpace: "nowrap" }}>BP{n}</th>
@@ -417,19 +489,30 @@ function KeywordUsageTable({ keywords, listing }) {
             </tr>
           </thead>
           <tbody>
-            {top.map((kw, idx) => {
+            {pageKeywords.map((kw, idx) => {
               const inTitle = check(listing.title, kw.keyword);
               const inBullets = listing.bullets.map(b => check(b, kw.keyword));
               const inBackend = check(listing.backendKeywords, kw.keyword);
               const used = inTitle || inBullets.some(Boolean) || inBackend;
+              const isSelected = selectedKeywords.has(kw.keyword);
+
               return (
-                <tr key={kw.keyword} style={{ borderBottom: `1px solid #1a1b24`, background: used ? "transparent" : "#1a0e0e" }}>
-                  <td style={{ padding: "7px 10px", color: S.dim }}>{idx + 1}</td>
+                <tr key={kw.keyword} style={{ borderBottom: `1px solid #1a1b24`, background: isSelected ? "#22c55e15" : used ? "transparent" : "#1a0e0e" }}>
+                  <td style={{ padding: "7px 10px", textAlign: "center", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleKeyword(kw.keyword)}
+                      style={{ cursor: "pointer" }}
+                    />
+                  </td>
                   <td style={{ padding: "7px 12px", color: used ? S.text : "#ef4444", fontWeight: used ? 400 : 600 }}>
                     {kw.keyword}
                     {!used && <span style={{ marginLeft: 6, fontSize: 10, color: "#ef4444", opacity: 0.7 }}>nie użyte</span>}
                   </td>
                   <td style={{ padding: "7px 10px", textAlign: "right", color: S.muted }}>{kw.volume > 0 ? kw.volume.toLocaleString() : "—"}</td>
+                  {keywords[0]?.cerebroScore !== undefined && <td style={{ padding: "7px 10px", textAlign: "right", color: S.muted }}>{kw.cerebroScore > 0 ? kw.cerebroScore.toFixed(1) : "—"}</td>}
+                  {keywords[0]?.organicRank !== undefined && <td style={{ padding: "7px 10px", textAlign: "right", color: S.muted }}>{kw.organicRank > 0 ? kw.organicRank : "—"}</td>}
                   <td style={{ padding: "7px 10px", textAlign: "center" }}>
                     {inTitle ? <span style={{ color: "#22c55e", fontWeight: 700 }}>✓</span> : <span style={{ color: "#2a2d35" }}>·</span>}
                   </td>
@@ -447,6 +530,59 @@ function KeywordUsageTable({ keywords, listing }) {
           </tbody>
         </table>
       </div>
+
+      {totalPages > 1 && (
+        <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
+          <button
+            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+            disabled={currentPage === 1}
+            style={{
+              padding: "6px 12px",
+              background: currentPage === 1 ? "#1e2028" : S.input,
+              border: `1px solid ${S.border}`,
+              borderRadius: 6,
+              color: currentPage === 1 ? "#6b7280" : S.text,
+              cursor: currentPage === 1 ? "default" : "pointer",
+              fontSize: 11,
+            }}
+          >
+            ← Poprzednia
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+            <button
+              key={page}
+              onClick={() => setCurrentPage(page)}
+              style={{
+                padding: "6px 10px",
+                background: page === currentPage ? S.accent : S.input,
+                border: `1px solid ${page === currentPage ? S.accent : S.border}`,
+                borderRadius: 6,
+                color: page === currentPage ? S.bg : S.text,
+                cursor: "pointer",
+                fontSize: 11,
+                fontWeight: page === currentPage ? 700 : 500,
+              }}
+            >
+              {page}
+            </button>
+          ))}
+          <button
+            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage === totalPages}
+            style={{
+              padding: "6px 12px",
+              background: currentPage === totalPages ? "#1e2028" : S.input,
+              border: `1px solid ${S.border}`,
+              borderRadius: 6,
+              color: currentPage === totalPages ? "#6b7280" : S.text,
+              cursor: currentPage === totalPages ? "default" : "pointer",
+              fontSize: 11,
+            }}
+          >
+            Następna →
+          </button>
+        </div>
+      )}
     </Card>
   );
 }
@@ -650,6 +786,9 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, g
         const header = lines[0].map(h => h.replace(/"/g, "").trim().toLowerCase());
         const kwIdx = header.findIndex(h => h.includes("keyword") || h.includes("phrase") || h.includes("search term"));
         const volIdx = header.findIndex(h => h.includes("volume") || h.includes("search vol") || h.includes("sv"));
+        const cerebroScoreIdx = header.findIndex(h => h.includes("cerebro") && h.includes("score") || h.includes("ciq"));
+        const organicRankIdx = header.findIndex(h => h.includes("organic") && h.includes("rank") || h.includes("ranking"));
+
         if (kwIdx === -1) { setError("Nie znaleziono kolumny ze słowami kluczowymi w pliku CSV."); return; }
 
         const keywords = lines.slice(1)
@@ -657,6 +796,8 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, g
           .map(row => ({
             keyword: row[kwIdx].replace(/"/g, "").trim(),
             volume: volIdx >= 0 ? parseInt(row[volIdx]?.replace(/"/g, "").trim()) || 0 : 0,
+            cerebroScore: cerebroScoreIdx >= 0 ? parseFloat(row[cerebroScoreIdx]?.replace(/"/g, "").trim()) || 0 : 0,
+            organicRank: organicRankIdx >= 0 ? parseInt(row[organicRankIdx]?.replace(/"/g, "").trim()) || 0 : 0,
           }))
           .filter(k => k.keyword.length > 0)
           .sort((a, b) => b.volume - a.volume);
@@ -951,6 +1092,7 @@ Double-check: Is every word in your JSON response written in ${mp.langEn}? If no
       const backendBytes = byteCount(parsed.backendKeywords || "");
 
       const issues = [];
+      if (titleLen > 200) issues.push(`Title is ${titleLen} chars — this EXCEEDS the HARD LIMIT of 200 characters. You MUST shorten the title to fit within 160-200 characters. Remove less important descriptors or use more concise phrasing.`);
       if (titleLen < 160) issues.push(`Title is only ${titleLen} chars — this is too short. Expand to 160-200 chars by adding more keywords, features, or use cases.`);
       if (bulletsTotal > 1000) issues.push(`Bullets total is ${bulletsTotal} chars — this EXCEEDS the HARD LIMIT of 1000 characters. You MUST shorten the bullets to fit within 950-1000 characters total. Trim the longest bullets first while keeping key information.`);
       else if (bulletsTotal < 950) issues.push(`Bullets total only ${bulletsTotal} chars — this is TOO SHORT. Each bullet MUST be 190-200 characters. EXPAND every bullet with more specific details: exact dimensions, weight, materials, compatible models, certifications, use cases. Target: 950-1000 chars total.`);
@@ -1016,6 +1158,11 @@ Respond ONLY with valid JSON in ${mp.langEn}:
             { role: "user", content: langFixPrompt },
           ]);
         }
+      }
+
+      // Post-processing: enforce title HARD LIMIT of 200 characters
+      if (parsed.title && parsed.title.length > 200) {
+        parsed.title = parsed.title.slice(0, 200).trimEnd();
       }
 
       // Post-processing: enforce bullet points HARD LIMIT of 1000 chars
