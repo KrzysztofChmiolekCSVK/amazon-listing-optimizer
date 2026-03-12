@@ -532,13 +532,13 @@ function KeywordUsageTable({ keywords, listing, secondaryKeywords, setSecondaryK
                       type="checkbox"
                       checked={isChecked}
                       onChange={() => toggleKeyword(kw.keyword)}
-                      disabled={used}
-                      title={used ? "Keyword już w listingu" : "Dodaj/usuń z Secondary Keywords"}
-                      style={{ cursor: used ? "not-allowed" : "pointer", opacity: used ? 0.5 : 1 }}
+                      title={used ? "Keyword w listingu – kliknij aby usunąć z Secondary" : "Kliknij aby dodać do Secondary Keywords"}
+                      style={{ cursor: "pointer" }}
                     />
                   </td>
                   <td style={{ padding: "7px 12px", color: isChecked ? S.text : "#ef4444", fontWeight: isChecked ? 400 : 600 }}>
                     {kw.keyword}
+                    {used && <span style={{ marginLeft: 6, fontSize: 10, color: "#22c55e", opacity: 0.8 }}>w listingu</span>}
                     {!used && !isSelected && <span style={{ marginLeft: 6, fontSize: 10, color: "#ef4444", opacity: 0.7 }}>nie użyte</span>}
                     {!used && isSelected && <span style={{ marginLeft: 6, fontSize: 10, color: "#22c55e", opacity: 0.8 }}>zaznaczone</span>}
                   </td>
