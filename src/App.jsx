@@ -406,6 +406,38 @@ function ListingPreview({ listing }) {
         </div>
       )}
 
+      {listing.benefits?.length > 0 && listing.benefits.some(b => b.trim()) && (
+        <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${S.border}` }}>
+          <SectionHead
+            copyText={listing.benefits.filter(b => b.trim()).join(" | ")}
+            copyLabel="benefity"
+          >
+            🎯 Benefity (4 główne zalety)
+          </SectionHead>
+          <div style={{ display: "grid", gap: 8 }}>
+            {listing.benefits.map((b, i) => (
+              b.trim() && (
+                <div key={i} style={{
+                  padding: "8px 12px",
+                  background: "#0d0e14",
+                  borderRadius: 6,
+                  borderLeft: `3px solid ${S.accent}`,
+                  fontSize: 13,
+                  color: S.text,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12
+                }}>
+                  <span>{b}</span>
+                  {b.trim() && <CopyBtn text={b} />}
+                </div>
+              )
+            ))}
+          </div>
+        </div>
+      )}
+
     </Card>
   );
 }
@@ -1102,6 +1134,22 @@ BACKEND KEYWORDS RULES (CRITICAL)
 - Example thought process: For a garden hose reel → think about: irrigation, watering, lawn, patio, sprinkler, nozzle, connector, storage, outdoor, terrace, balcony, greenhouse, gardening tools, landscape, yard...
 
 ═══════════════════════════════════════
+BENEFITS (4 SHORT SELLING POINTS)
+═══════════════════════════════════════
+- Generate EXACTLY 4 benefits
+- Each benefit: maximum 6 words
+- Format: Short, punchy phrases that highlight product advantages
+- Focus on what makes this product special/attractive to customers
+- Examples:
+  * "Potrwałe, niezawodne, długoletnie użytkowanie"
+  * "Kompatybilny z wieloma urządzeniami"
+  * "Szybka instalacja, zero nakładu pracy"
+  * "Najwyższa jakość materiałów"
+- NO complete sentences, NO marketing fluff, NO ALL CAPS
+- Make them benefit-focused, not feature-focused
+- These are selling points for marketing materials/category pages
+
+═══════════════════════════════════════
 LANGUAGE-SPECIFIC NOTES
 ═══════════════════════════════════════
 - DE: German compound nouns are valuable keywords (e.g., "Küchenmesser", "Schneidebrett"). Use them. Formal tone.
@@ -1117,7 +1165,7 @@ LANGUAGE-SPECIFIC NOTES
 RESPONSE FORMAT
 ═══════════════════════════════════════
 Respond ONLY with valid JSON. No backticks, no preamble, no explanation:
-{"title":"...","bullet1":"...","bullet2":"...","bullet3":"...","bullet4":"...","bullet5":"...","description":"...","backendKeywords":"..."}
+{"title":"...","bullet1":"...","bullet2":"...","bullet3":"...","bullet4":"...","bullet5":"...","description":"...","backendKeywords":"...","benefits":["benefit1","benefit2","benefit3","benefit4"]}
 
 FINAL CHECK before responding:
 - Is the title 160-200 characters? If under 160, ADD more keywords/features.
@@ -1185,6 +1233,14 @@ Double-check: Is every word in your JSON response written in ${mp.langEn}? If no
       else if (bulletsTotal < 950) issues.push(`Bullets total only ${bulletsTotal} chars — this is TOO SHORT. Each bullet MUST be 190-200 characters. EXPAND every bullet with more specific details: exact dimensions, weight, materials, compatible models, certifications, use cases. Target: 950-1000 chars total.`);
       if (backendBytes < 235) issues.push(`Backend keywords only ${backendBytes}/250 bytes — you MUST add more words to reach 240-250 bytes. Brainstorm: synonyms, related categories, compatible products, use cases, materials, locations, actions. NO duplicates, NO words from title/bullets.`);
 
+      // Validate benefits
+      const benefitCount = (parsed.benefits && Array.isArray(parsed.benefits)) ? parsed.benefits.length : 0;
+      if (benefitCount < 4) issues.push(`Benefits: Muszą być dokładnie 4 elementy. Otrzymano ${benefitCount}. Wygeneruj dokładnie cztery krótkie benefity (max 6 słów każdy).`);
+      if (parsed.benefits && Array.isArray(parsed.benefits)) {
+        const longBenefits = parsed.benefits.filter(b => (b || "").split(" ").length > 6);
+        if (longBenefits.length > 0) issues.push(`Benefits: ${longBenefits.length} benefit(ów) przekracza 6 słów. Zkrócić wszystkie benefity do maksymalnie 6 słów każdy.`);
+      }
+
       if (issues.length > 0) {
         setStatus("Optymalizacja — rozbudowywanie listingu...");
         const refinementPrompt = `The listing you generated has these issues:
@@ -1197,9 +1253,10 @@ Fix ALL issues above. Keep everything in ${mp.langEn}. Make the listing BIGGER a
 For the title: add secondary keywords, features, or use cases to reach 160-200 chars.
 For bullets: the TOTAL of all 5 bullets MUST be between 950-1000 characters. HARD LIMIT: 1000 max. Each bullet should be 180-200 chars. If over 1000, shorten the longest bullets. If under 950, add details.
 For backend keywords: brainstorm ALL possible synonyms, alternate names, related categories, compatible products, use cases — pack it to 240-250 bytes. Remember: no words already in title or bullets, no brand names, no stop words, NO DUPLICATE WORDS.
+For benefits: EXACTLY 4 benefits, each maximum 6 words. They must be short, punchy selling points highlighting product advantages. Make them benefit-focused, not feature-focused.
 
 Respond ONLY with the improved JSON, same format:
-{"title":"...","bullet1":"...","bullet2":"...","bullet3":"...","bullet4":"...","bullet5":"...","description":"...","backendKeywords":"..."}`;
+{"title":"...","bullet1":"...","bullet2":"...","bullet3":"...","bullet4":"...","bullet5":"...","description":"...","backendKeywords":"...","benefits":["benefit1","benefit2","benefit3","benefit4"]}`;
 
         parsed = await callAI([
           systemMessage,
@@ -1504,6 +1561,9 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
         bullets: [parsed.bullet1||"", parsed.bullet2||"", parsed.bullet3||"", parsed.bullet4||"", parsed.bullet5||""],
         description: parsed.description || "",
         backendKeywords: parsed.backendKeywords || "",
+        benefits: (parsed.benefits && Array.isArray(parsed.benefits))
+          ? parsed.benefits.map(b => (b || "").trim()).slice(0, 4)
+          : ["", "", "", ""],
         brand: parsed.brand || brand || "",
       };
       setListing(newListing);
@@ -1712,6 +1772,26 @@ function ManualEditor({ listing, setListing }) {
         onChange={v => setListing({ ...listing, backendKeywords: v })}
         placeholder="małe litery oddzielone spacjami synonimy skróty alternatywne nazwy..."
         multi maxBytes={250} helper="Małe litery, bez przecinków, bez słów z tytułu/punktów, bez nazw marek." />
+
+      <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${S.border}` }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: S.accent, marginBottom: 14, display: "flex", alignItems: "center", gap: 6 }}>
+          🎯 BENEFITY (4 główne zalety — max 6 słów każdy)
+        </div>
+        {[0, 1, 2, 3].map(i => (
+          <Field
+            key={i}
+            label={`Benefit ${i + 1}`}
+            value={listing.benefits?.[i] || ""}
+            onChange={v => {
+              const newBenefits = [...(listing.benefits || ["", "", "", ""])];
+              newBenefits[i] = v;
+              setListing({ ...listing, benefits: newBenefits });
+            }}
+            placeholder={`np. Maksymalna wydajność, Uniwersalna kompatybilność, ...`}
+            helper={i === 0 ? "Krótkie zwroty sprzedające główne zalety produktu (poniżej 7 słów każdy)." : ""}
+          />
+        ))}
+      </div>
     </Card>
   );
 }
@@ -1732,7 +1812,7 @@ export default function App() {
   const [secondaryKeywords, setSecondaryKeywords] = useState("");
   const [csvKeywords, setCsvKeywords] = useState(null);
   const [listing, setListing] = useState({
-    title: "", bullets: ["", "", "", "", ""], description: "", backendKeywords: "", brand: "",
+    title: "", bullets: ["", "", "", "", ""], description: "", backendKeywords: "", benefits: ["", "", "", ""], brand: "",
   });
   const [savedListings, setSavedListings] = useState(() => {
     try { return JSON.parse(localStorage.getItem("amz-listing-history") || "[]"); } catch { return []; }
