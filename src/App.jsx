@@ -348,8 +348,6 @@ function ListingPreview({ listing }) {
   const backendScore = Math.min(100, Math.round((bBytes / 250) * 100));
   const overall = Math.round((titleScore + bulletScore + backendScore) / 3);
 
-  const allBullets = listing.bullets.filter(b => b.trim()).join("\n");
-
   return (
     <Card>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24, flexWrap: "wrap", gap: 16 }}>
@@ -374,7 +372,7 @@ function ListingPreview({ listing }) {
       </div>
 
       <div style={{ marginBottom: 20 }}>
-        <SectionHead copyText={allBullets} copyLabel="wszystkie punkty">Punkty kluczowe (Bullet Points)</SectionHead>
+        <SectionHead>Punkty kluczowe (Bullet Points)</SectionHead>
         {listing.bullets.map((b, i) => (
           <div key={i} style={{
             padding: "8px 12px", marginBottom: 6, background: "#0d0e14", borderRadius: 6,
@@ -408,10 +406,7 @@ function ListingPreview({ listing }) {
 
       {listing.benefits?.length > 0 && listing.benefits.some(b => b.trim()) && (
         <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${S.border}` }}>
-          <SectionHead
-            copyText={listing.benefits.filter(b => b.trim()).join(" | ")}
-            copyLabel="benefity"
-          >
+          <SectionHead>
             🎯 Benefity (4 główne zalety)
           </SectionHead>
           <div style={{ display: "grid", gap: 8 }}>
