@@ -51,6 +51,32 @@ const ATTR_LABELS = {
 
 function byteCount(s) { return new TextEncoder().encode(s || "").length; }
 
+// German stemmer for inflected form detection
+function stemGerman(word) {
+  if (!word || word.length < 3) return word;
+
+  let w = word.toLowerCase()
+    .replace(/ä/g, "a").replace(/ö/g, "o").replace(/ü/g, "u").replace(/ß/g, "ss");
+
+  // Remove common German suffixes (plural, case, diminutive, etc.)
+  const suffixes = [
+    // Plural/case endings
+    { suf: "en", minLen: 4 }, { suf: "e", minLen: 4 }, { suf: "n", minLen: 4 },
+    { suf: "s", minLen: 4 }, { suf: "er", minLen: 4 },
+    // Common noun endings
+    { suf: "heit", minLen: 5 }, { suf: "keit", minLen: 5 }, { suf: "schaft", minLen: 6 },
+    { suf: "lich", minLen: 5 }, { suf: "ung", minLen: 4 }
+  ];
+
+  for (const {suf, minLen} of suffixes) {
+    if (w.endsWith(suf) && w.length >= minLen) {
+      w = w.slice(0, -suf.length);
+      break; // Only remove one suffix
+    }
+  }
+  return w;
+}
+
 /* ═══════════════════════════════════════════
    MAŁE KOMPONENTY
    ═══════════════════════════════════════════ */
@@ -463,6 +489,18 @@ function KeywordUsageTable({ keywords, listing, secondaryKeywords, setSecondaryK
     }
   };
 
+  // Build stem set from listing to detect inflected form duplicates
+  const listingTextForStems = [
+    listing.title || "",
+    listing.bullets?.join(" ") || "",
+    (listing.backendKeywords || "").replace(/\s+/g, " ")
+  ].join(" ").toLowerCase();
+
+  const listingStems = useMemo(() => {
+    const words = listingTextForStems.replace(/[–—\-,.:;()]/g, " ").split(/\s+/).filter(w => w.length > 1);
+    return new Set(words.map(w => stemGerman(w)));
+  }, [listingTextForStems]);
+
   const SortableHeader = ({ col, label, align = "left" }) => (
     <th
       onClick={() => handleToggleSort(col)}
@@ -522,25 +560,28 @@ function KeywordUsageTable({ keywords, listing, secondaryKeywords, setSecondaryK
               const inBullets = listing.bullets.map(b => check(b, kw.keyword));
               const inBackend = check(listing.backendKeywords, kw.keyword);
               const used = inTitle || inBullets.some(Boolean) || inBackend;
+              const isStemDuplicate = !used && listingStems.has(stemGerman(kw.keyword.toLowerCase()));
               const isSelected = selectedKeywordsSet.has(kw.keyword.toLowerCase());
               const isChecked = used || isSelected;
 
               return (
-                <tr key={kw.keyword} style={{ borderBottom: `1px solid #1a1b24`, background: isChecked ? "#22c55e15" : "#1a0e0e" }}>
-                  <td style={{ padding: "7px 10px", textAlign: "center", cursor: "pointer" }}>
+                <tr key={kw.keyword} style={{ borderBottom: `1px solid #1a1b24`, background: isChecked ? "#22c55e15" : isStemDuplicate ? "#8b5a0015" : "#1a0e0e", opacity: isStemDuplicate ? 0.7 : 1 }}>
+                  <td style={{ padding: "7px 10px", textAlign: "center", cursor: isStemDuplicate ? "not-allowed" : "pointer" }}>
                     <input
                       type="checkbox"
                       checked={isChecked}
-                      onChange={() => toggleKeyword(kw.keyword)}
-                      title={used ? "Keyword w listingu – kliknij aby usunąć z Secondary" : "Kliknij aby dodać do Secondary Keywords"}
-                      style={{ cursor: "pointer" }}
+                      onChange={() => !isStemDuplicate && toggleKeyword(kw.keyword)}
+                      disabled={isStemDuplicate}
+                      title={used ? "Keyword w listingu – kliknij aby usunąć z Secondary" : isStemDuplicate ? "Stem-duplikat: inflected form już w listingu" : "Kliknij aby dodać do Secondary Keywords"}
+                      style={{ cursor: isStemDuplicate ? "not-allowed" : "pointer", opacity: isStemDuplicate ? 0.5 : 1 }}
                     />
                   </td>
-                  <td style={{ padding: "7px 12px", color: isChecked ? S.text : "#ef4444", fontWeight: isChecked ? 400 : 600 }}>
+                  <td style={{ padding: "7px 12px", color: isChecked ? S.text : isStemDuplicate ? "#ff9a5680" : "#ef4444", fontWeight: isChecked ? 400 : 600 }}>
                     {kw.keyword}
                     {used && <span style={{ marginLeft: 6, fontSize: 10, color: "#22c55e", opacity: 0.8 }}>w listingu</span>}
-                    {!used && !isSelected && <span style={{ marginLeft: 6, fontSize: 10, color: "#ef4444", opacity: 0.7 }}>nie użyte</span>}
-                    {!used && isSelected && <span style={{ marginLeft: 6, fontSize: 10, color: "#22c55e", opacity: 0.8 }}>zaznaczone</span>}
+                    {isStemDuplicate && <span style={{ marginLeft: 6, fontSize: 10, color: "#ff9a56", opacity: 0.8 }}>stem-duplikat</span>}
+                    {!used && !isStemDuplicate && !isSelected && <span style={{ marginLeft: 6, fontSize: 10, color: "#ef4444", opacity: 0.7 }}>nie użyte</span>}
+                    {!used && !isStemDuplicate && isSelected && <span style={{ marginLeft: 6, fontSize: 10, color: "#22c55e", opacity: 0.8 }}>zaznaczone</span>}
                   </td>
                   <td style={{ padding: "7px 10px", textAlign: "right", color: S.muted }}>{kw.volume > 0 ? kw.volume.toLocaleString() : "—"}</td>
                   {keywords[0]?.cerebroScore !== undefined && <td style={{ padding: "7px 10px", textAlign: "right", color: S.muted }}>{kw.cerebroScore > 0 ? kw.cerebroScore.toFixed(1) : "—"}</td>}
@@ -1339,23 +1380,32 @@ Respond ONLY with a JSON array of 3 strings: ["sentence 1.", "sentence 2.", "sen
           parsed.bullet4 || "", parsed.bullet5 || "",
           (parsed.description || "").replace(/<br\s*\/?>/gi, " "),
         ].join(" ").toLowerCase();
-        
+
         // Extract individual words from listing (strip punctuation)
         const listingWords = new Set(
           listingText.replace(/[–—\-,.:;()]/g, " ").split(/\s+/).filter(w => w.length > 1)
         );
-        
+
+        // Create stem set from listing words for inflection detection
+        const listingStems = new Set(
+          Array.from(listingWords).map(w => stemGerman(w))
+        );
+
         // Process backend keywords
         let bkWords = parsed.backendKeywords.toLowerCase()
           .replace(/[,;.:]/g, " ")  // remove punctuation
           .split(/\s+/)
           .filter(Boolean);
-        
+
         // 1. Remove duplicates
         bkWords = [...new Set(bkWords)];
-        
-        // 2. Remove words that appear in listing text
-        bkWords = bkWords.filter(w => !listingWords.has(w) && w.length > 1);
+
+        // 2. Remove words that appear in listing text (exact match OR stem match)
+        bkWords = bkWords.filter(w => {
+          const exactMatch = listingWords.has(w);
+          const stemMatch = listingStems.has(stemGerman(w));
+          return !exactMatch && !stemMatch && w.length > 1;
+        });
         
         // 3. Remove common stop words
         const stopWords = new Set(["und","oder","für","mit","von","den","dem","des","die","der","das","ein","eine","einen","einem","einer","zu","zur","zum","im","in","am","an","auf","aus","bei","bis","nach","über","unter","vor","entre","les","des","pour","avec","dans","une","sur","the","and","for","with","from","that","this","are","was","not","but","have","has","been","will","can","all","its","our","your","also","than","into","only","del","los","las","por","con","una","como","más","los","est","plus","que","qui","son","ses","ont","par","aux","ces","het","van","een","zijn","bij","nog","och","att","som","har","den","det","på","med","av","do","na","ze","od","po","za","się","jest","jak","lub","czy","nie","co","to","we","te","ma","tak","tu","tam","ten","ta","ich","ale","i","a","o","w","z","u","e","y","il","di","la","le","lo","da","al","no","si","se","en","el","de"]);
