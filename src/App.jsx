@@ -1250,39 +1250,49 @@ Double-check: Is every word in your JSON response written in ${mp.langEn}? If no
     if (!btgData || !btgData.categories) return null;
 
     try {
-      const categoryList = btgData.categories
-        .slice(0, 50) // Limit to first 50 for token efficiency
+      // Extract meaningful words from title + backend keywords (min 3 chars, no stop words)
+      const stopWords = new Set(["the","and","for","with","from","that","this","are","not","but","all","its","also","into","only","sehr","und","für","mit","von","eine","einen","einer","einem","ist","das","die","der","des","des","dem","ein","auch","oraz","dla","do","ze","się","jest","jak","lub","czy","nie"]);
+      const allText = [listing.title || "", listing.backendKeywords || ""].join(" ");
+      const words = allText
+        .toLowerCase()
+        .replace(/[^a-ząćęłńóśźżäöüßéèêëàâçîïôùûñáíóú\s]/g, " ")
+        .split(/\s+/)
+        .filter(w => w.length >= 3 && !stopWords.has(w));
+      const uniqueWords = [...new Set(words)].slice(0, 30);
+
+      // Score each category by how many words from listing match its path/item_type
+      const scored = btgData.categories.map(cat => {
+        const catText = (cat.path + " " + cat.item_type).toLowerCase();
+        let score = 0;
+        for (const w of uniqueWords) {
+          if (catText.includes(w)) score += w.length; // Longer word match = higher score
+        }
+        return { ...cat, score };
+      });
+
+      // Sort by score descending, take top 40 (with at least score > 0 first, then fallback)
+      scored.sort((a, b) => b.score - a.score);
+      const matched = scored.filter(c => c.score > 0).slice(0, 40);
+      const candidates = matched.length >= 5 ? matched : scored.slice(0, 40);
+
+      const categoryList = candidates
         .map((cat, idx) => `${idx + 1}. [${cat.id}] ${cat.path} (item_type_keyword: ${cat.item_type})`)
         .join("\n");
-
-      const listingText = [
-        listing.title || "",
-        ...(listing.bullets || []),
-        listing.description || "",
-        listing.backendKeywords || ""
-      ].join(" ");
 
       const detectPrompt = `You are an expert Amazon category matcher. I will give you a product listing and a list of possible Amazon Browse Tree Guide (BTG) categories. Your job is to determine which category this product BEST matches.
 
 PRODUCT LISTING TO CLASSIFY:
 Title: ${listing.title}
-Bullets: ${(listing.bullets || []).join(" | ")}
-Description: ${listing.description}
+Bullets: ${(listing.bullets || []).slice(0, 2).join(" | ")}
 Backend Keywords: ${listing.backendKeywords}
 
-AVAILABLE CATEGORIES (first 50):
+AVAILABLE CATEGORIES (best matches):
 ${categoryList}
 
-Based on the product information above, which category from the list BEST matches this product? Consider:
-- Product type and main function
-- Key features and materials mentioned
-- Use cases and applications
-- Related keywords and terminology
-
-Respond ONLY with the category ID in this format: {"categoryId": "CATEGORY_ID_HERE"}`;
+Which category from the list BEST matches this product? Respond ONLY with JSON: {"categoryId": "CATEGORY_ID_HERE"}`;
 
       const response = await callAI([
-        { role: "system", content: `You are a category matching expert. Respond with ONLY valid JSON. No explanations, no markdown, just pure JSON.` },
+        { role: "system", content: `You are a category matching expert. Respond with ONLY valid JSON. No explanations, no markdown, just JSON.` },
         { role: "user", content: detectPrompt }
       ]);
 
