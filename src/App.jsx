@@ -2058,9 +2058,6 @@ export default function App() {
           <MarketplaceSelector selected={marketplace} setSelected={setMarketplace} />
         </Card>
 
-        {/* CATEGORY BROWSER */}
-        <CategoryBrowser btg={btg} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} />
-
         {/* TABS */}
         <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
           <TabBtn active={tab === "generate"} onClick={() => setTab("generate")} icon="⚡">Generuj z AI</TabBtn>
@@ -2084,6 +2081,7 @@ export default function App() {
                 onSaveListing={saveToHistory} />
               {listing.title && <ListingPreview listing={listing} />}
               {csvKeywords && listing.title && <KeywordUsageTable keywords={csvKeywords} listing={listing} secondaryKeywords={secondaryKeywords} setSecondaryKeywords={setSecondaryKeywords} />}
+              <CategoryBrowser btg={btg} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} />
             </>
           )}
           {tab === "manual" && <ManualEditor listing={listing} setListing={setListing} />}
