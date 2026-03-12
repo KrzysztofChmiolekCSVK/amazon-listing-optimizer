@@ -260,7 +260,7 @@ function MarketplaceSelector({ selected, setSelected }) {
    BTG CATEGORY BROWSER
    ═══════════════════════════════════════════ */
 
-function CategoryBrowser({ btg, selectedCategory, setSelectedCategory }) {
+function CategoryBrowser({ btg, selectedCategory, setSelectedCategory, categoryLocked, setCategoryLocked }) {
   const [search, setSearch] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const ref = useRef(null);
@@ -282,6 +282,9 @@ function CategoryBrowser({ btg, selectedCategory, setSelectedCategory }) {
   const selCat = selectedCategory && btg ? btg.category_attrs[selectedCategory] : null;
   const attrs = selCat ? selCat.attrs : [];
 
+  // If category is locked, show current selection instead of search
+  const displaySearch = categoryLocked && selectedCategory && selCat ? selCat.path : search;
+
   return (
     <Card style={{ marginBottom: 20, marginTop: 20, borderTop: `1px solid ${S.border}` }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
@@ -292,18 +295,35 @@ function CategoryBrowser({ btg, selectedCategory, setSelectedCategory }) {
         </div>
       </div>
 
-      <div ref={ref} style={{ position: "relative", marginBottom: 12 }}>
-        <input
-          value={search}
-          onChange={e => { setSearch(e.target.value); setShowDropdown(true); }}
-          onFocus={() => setShowDropdown(true)}
-          placeholder="Szukaj kategorii np. cutting board, candle, pillow..."
-          style={{
-            width: "100%", padding: "12px 14px 12px 38px", background: S.input, border: `1px solid ${S.border}`,
-            borderRadius: 8, color: S.text, fontSize: 14, fontFamily: S.font, outline: "none", boxSizing: "border-box",
-          }}
-        />
-        <span style={{ position: "absolute", left: 12, top: 13, fontSize: 16, color: S.muted }}>🔍</span>
+      <div ref={ref} style={{ position: "relative", marginBottom: 12, display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ flex: 1, position: "relative" }}>
+          <input
+            disabled={categoryLocked}
+            value={categoryLocked && selCat ? selCat.path : search}
+            onChange={e => { setSearch(e.target.value); setShowDropdown(true); }}
+            onFocus={() => !categoryLocked && setShowDropdown(true)}
+            placeholder={categoryLocked ? "Kategoria zablokowana" : "Szukaj kategorii np. cutting board, candle, pillow..."}
+            style={{
+              width: "100%", padding: "12px 14px 12px 38px", background: categoryLocked ? S.muted + "15" : S.input,
+              border: `1px solid ${categoryLocked ? S.border + "80" : S.border}`,
+              borderRadius: 8, color: S.text, fontSize: 14, fontFamily: S.font, outline: "none", boxSizing: "border-box",
+              cursor: categoryLocked ? "not-allowed" : "text", opacity: categoryLocked ? 0.6 : 1,
+            }}
+          />
+          <span style={{ position: "absolute", left: 12, top: 13, fontSize: 16, color: S.muted }}>
+            {categoryLocked ? "🔒" : "🔍"}
+          </span>
+        </div>
+        {categoryLocked && (
+          <button onClick={() => { setCategoryLocked(false); setSearch(""); }}
+            style={{
+              padding: "8px 12px", background: S.accent + "20", border: `1px solid ${S.accent}`, borderRadius: 6,
+              color: S.accent, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: S.font,
+            }}>
+            Odblokuj
+          </button>
+        )}
+      </div>
 
         {showDropdown && filtered.length > 0 && (
           <div style={{
@@ -313,13 +333,18 @@ function CategoryBrowser({ btg, selectedCategory, setSelectedCategory }) {
           }}>
             {filtered.map(cat => (
               <button key={cat.id} onClick={() => {
+                if (categoryLocked) {
+                  alert("Kategoria jest zablokowana. Kliknij 'Odblokuj' aby zmienić.");
+                  return;
+                }
                 setSelectedCategory(cat.id);
                 setSearch(cat.path);
                 setShowDropdown(false);
               }} style={{
                 display: "block", width: "100%", padding: "10px 14px", border: "none", borderBottom: "1px solid #1e2028",
                 background: selectedCategory === cat.id ? "#ff990015" : "transparent",
-                color: S.text, fontSize: 13, fontFamily: S.font, cursor: "pointer", textAlign: "left",
+                color: S.text, fontSize: 13, fontFamily: S.font, cursor: categoryLocked ? "not-allowed" : "pointer", textAlign: "left",
+                opacity: categoryLocked ? 0.5 : 1,
               }}>
                 <div style={{ fontWeight: 500 }}>{cat.path}</div>
                 <div style={{ fontSize: 11, color: S.dim, marginTop: 2 }}>
@@ -1358,6 +1383,7 @@ Which category from the list BEST matches this product? Respond ONLY with JSON: 
     if (!activeKey.trim()) return setError(`Wpisz klucz API ${provider === "gemini" ? "Gemini" : "Groq"} w zakładce ⚙️ Ustawienia.`);
     if (!marketplace) return setError("Wybierz marketplace.");
     setError("");
+    setCategoryLocked(false); // Reset category lock on new generation
     setLoading(true);
     setStatus("Generowanie listingu...");
 
@@ -1751,6 +1777,7 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
         if (detectedCategoryId) {
           setSelectedCategory(detectedCategoryId);
           setCategoryAttrs({});
+          setCategoryLocked(true); // Lock category so it doesn't change when switching marketplaces
         }
       }
 
@@ -1993,6 +2020,7 @@ export default function App() {
   const [model, setModel] = useState("meta-llama/llama-4-scout-17b-16e-instruct");
   const [btg, setBtg] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [categoryLocked, setCategoryLocked] = useState(false); // Auto-lock category after detection
   const [categoryAttrs, setCategoryAttrs] = useState({});
   const [secondaryKeywords, setSecondaryKeywords] = useState("");
   const [csvKeywords, setCsvKeywords] = useState(null);
@@ -2111,7 +2139,7 @@ export default function App() {
                 onSaveListing={saveToHistory} />
               {listing.title && <ListingPreview listing={listing} />}
               {csvKeywords && listing.title && <KeywordUsageTable keywords={csvKeywords} listing={listing} secondaryKeywords={secondaryKeywords} setSecondaryKeywords={setSecondaryKeywords} />}
-              <CategoryBrowser btg={btg} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} />
+              <CategoryBrowser btg={btg} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} categoryLocked={categoryLocked} setCategoryLocked={setCategoryLocked} />
             </>
           )}
           {tab === "manual" && <ManualEditor listing={listing} setListing={setListing} />}
