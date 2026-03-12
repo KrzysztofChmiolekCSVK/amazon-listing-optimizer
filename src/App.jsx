@@ -388,15 +388,34 @@ function ListingPreview({ listing }) {
    KEYWORD USAGE TABLE
    ═══════════════════════════════════════════ */
 
-function KeywordUsageTable({ keywords, listing }) {
+function KeywordUsageTable({ keywords, listing, secondaryKeywords, setSecondaryKeywords }) {
   if (!keywords?.length || !listing?.title) return null;
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState("volume");
   const [sortOrder, setSortOrder] = useState("desc");
-  const [selectedKeywords, setSelectedKeywords] = useState(new Set());
 
   const itemsPerPage = 20;
   const check = (text, kw) => (text || "").toLowerCase().includes(kw.toLowerCase());
+
+  // Parse secondary keywords into a Set
+  const selectedKeywordsSet = useMemo(() => {
+    if (!secondaryKeywords) return new Set();
+    return new Set(
+      secondaryKeywords
+        .split(",")
+        .map(k => k.trim().toLowerCase())
+        .filter(k => k.length > 0)
+    );
+  }, [secondaryKeywords]);
+
+  // Auto-check keywords already in listing
+  const getIsUsedOrSelected = (kw) => {
+    const inTitle = check(listing.title, kw.keyword);
+    const inBullets = listing.bullets.some(b => check(b, kw.keyword));
+    const inBackend = check(listing.backendKeywords, kw.keyword);
+    const isManuallySelected = selectedKeywordsSet.has(kw.keyword.toLowerCase());
+    return inTitle || inBullets || inBackend || isManuallySelected;
+  };
 
   // Sort keywords
   let sortedKeywords = [...keywords];
@@ -426,13 +445,22 @@ function KeywordUsageTable({ keywords, listing }) {
   };
 
   const toggleKeyword = (kw) => {
-    const newSelected = new Set(selectedKeywords);
-    if (newSelected.has(kw)) {
-      newSelected.delete(kw);
+    const keywordLower = kw.toLowerCase();
+    if (selectedKeywordsSet.has(keywordLower)) {
+      // Remove from secondary keywords
+      const newKeywords = secondaryKeywords
+        .split(",")
+        .map(k => k.trim())
+        .filter(k => k.toLowerCase() !== keywordLower)
+        .join(", ");
+      setSecondaryKeywords(newKeywords);
     } else {
-      newSelected.add(kw);
+      // Add to secondary keywords
+      const newKeywords = secondaryKeywords
+        ? `${secondaryKeywords}, ${kw}`
+        : kw;
+      setSecondaryKeywords(newKeywords);
     }
-    setSelectedKeywords(newSelected);
   };
 
   const SortableHeader = ({ col, label, align = "left" }) => (
@@ -465,9 +493,9 @@ function KeywordUsageTable({ keywords, listing }) {
             <div style={{ fontSize: 11, color: S.dim }}>{sortedKeywords.length} słów kluczowych z Helium 10 — gdzie zostały użyte w listingu</div>
           </div>
         </div>
-        {selectedKeywords.size > 0 && (
+        {selectedKeywordsSet.size > 0 && (
           <div style={{ fontSize: 12, color: S.accent, fontFamily: S.mono }}>
-            Wybrano: {selectedKeywords.size}
+            Wybrano do Secondary: {selectedKeywordsSet.size}
           </div>
         )}
       </div>
@@ -494,21 +522,25 @@ function KeywordUsageTable({ keywords, listing }) {
               const inBullets = listing.bullets.map(b => check(b, kw.keyword));
               const inBackend = check(listing.backendKeywords, kw.keyword);
               const used = inTitle || inBullets.some(Boolean) || inBackend;
-              const isSelected = selectedKeywords.has(kw.keyword);
+              const isSelected = selectedKeywordsSet.has(kw.keyword.toLowerCase());
+              const isChecked = used || isSelected;
 
               return (
-                <tr key={kw.keyword} style={{ borderBottom: `1px solid #1a1b24`, background: isSelected ? "#22c55e15" : used ? "transparent" : "#1a0e0e" }}>
+                <tr key={kw.keyword} style={{ borderBottom: `1px solid #1a1b24`, background: isChecked ? "#22c55e15" : "#1a0e0e" }}>
                   <td style={{ padding: "7px 10px", textAlign: "center", cursor: "pointer" }}>
                     <input
                       type="checkbox"
-                      checked={isSelected}
+                      checked={isChecked}
                       onChange={() => toggleKeyword(kw.keyword)}
-                      style={{ cursor: "pointer" }}
+                      disabled={used}
+                      title={used ? "Keyword już w listingu" : "Dodaj/usuń z Secondary Keywords"}
+                      style={{ cursor: used ? "not-allowed" : "pointer", opacity: used ? 0.5 : 1 }}
                     />
                   </td>
-                  <td style={{ padding: "7px 12px", color: used ? S.text : "#ef4444", fontWeight: used ? 400 : 600 }}>
+                  <td style={{ padding: "7px 12px", color: isChecked ? S.text : "#ef4444", fontWeight: isChecked ? 400 : 600 }}>
                     {kw.keyword}
-                    {!used && <span style={{ marginLeft: 6, fontSize: 10, color: "#ef4444", opacity: 0.7 }}>nie użyte</span>}
+                    {!used && !isSelected && <span style={{ marginLeft: 6, fontSize: 10, color: "#ef4444", opacity: 0.7 }}>nie użyte</span>}
+                    {!used && isSelected && <span style={{ marginLeft: 6, fontSize: 10, color: "#22c55e", opacity: 0.8 }}>zaznaczone</span>}
                   </td>
                   <td style={{ padding: "7px 10px", textAlign: "right", color: S.muted }}>{kw.volume > 0 ? kw.volume.toLocaleString() : "—"}</td>
                   {keywords[0]?.cerebroScore !== undefined && <td style={{ padding: "7px 10px", textAlign: "right", color: S.muted }}>{kw.cerebroScore > 0 ? kw.cerebroScore.toFixed(1) : "—"}</td>}
@@ -1570,7 +1602,6 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
         ) : (<>⚡ Wygeneruj listing</>)}
       </button>
     </Card>
-    {csvKeywords && listing.title && <KeywordUsageTable keywords={csvKeywords} listing={listing} />}
     </>
   );
 }
@@ -1728,6 +1759,7 @@ export default function App() {
                 provider={provider} apiKey={apiKey} geminiKey={geminiKey} model={model} btg={btg} selectedCategory={selectedCategory}
                 onSaveListing={saveToHistory} />
               {listing.title && <ListingPreview listing={listing} />}
+              {csvKeywords && listing.title && <KeywordUsageTable keywords={csvKeywords} listing={listing} secondaryKeywords={secondaryKeywords} setSecondaryKeywords={setSecondaryKeywords} />}
             </>
           )}
           {tab === "manual" && <ManualEditor listing={listing} setListing={setListing} />}
