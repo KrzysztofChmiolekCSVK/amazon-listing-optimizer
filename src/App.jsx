@@ -329,6 +329,11 @@ function CategoryBrowser({ btg, selectedCategory, setSelectedCategory, categoryL
               );
             })}
           </div>
+          {categorySuggestions[0]?.lowConfidence && (
+            <div style={{ marginTop: 8, padding: "8px 12px", background: "#f59e0b15", border: "1px solid #f59e0b30", borderRadius: 8, fontSize: 11, color: "#f59e0b" }}>
+              ⚠️ Niska pewność dopasowania — plik BTG obejmuje tylko <strong>Home & Kitchen</strong>. Jeśli Twój produkt należy do innej kategorii (Garden & Outdoor, Tools, Sports itp.), wyszukaj ręcznie poniżej lub pomiń kategorię.
+            </div>
+          )}
           <div style={{ fontSize: 10, color: S.dim, marginTop: 8 }}>
             Nie pasuje żadna? Wyszukaj ręcznie poniżej lub wygeneruj listing ponownie.
           </div>
@@ -1378,11 +1383,15 @@ Double-check: Is every word in your JSON response written in ${mp.langEn}? If no
     console.log(`[BTG] Top 10 suggestions for "${listing.title?.slice(0, 60)}":`, scored.slice(0, 10).map(c => `${c.item_type}(${c.score.toFixed(0)})`));
 
     // Return top 10 with score > 0
-    return scored.filter(c => c.score > 0).slice(0, 10).map(c => ({
+    // Mark as low confidence if best score is weak (product likely outside BTG coverage)
+    const top = scored.filter(c => c.score > 0).slice(0, 10);
+    const bestScore = top[0]?.score || 0;
+    return top.map(c => ({
       id: c.id,
       path: btgData.category_attrs[c.id].path,
       item_type: c.item_type,
       score: c.score,
+      lowConfidence: bestScore < 30, // BTG may not cover this product category
     }));
   }
 
