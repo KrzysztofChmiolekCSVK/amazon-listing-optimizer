@@ -116,31 +116,20 @@ function checkForbiddenWords(text, forbiddenList) {
 
 function byteCount(s) { return new TextEncoder().encode(s || "").length; }
 
-// German stemmer for inflected form detection
-function stemGerman(word) {
+// Universal stemmer — works for all inflected languages (PL, DE, NL, IT, ES, FR, SE)
+// Uses 5-char prefix: kawowe→kawow, kawowa→kawow, czyszczące→czysz, czyszczenie→czysz
+// koffiemachine→koffi, koffiemachines→koffi, mineralny→miner, mineralnych→miner
+function stemUniversal(word) {
   if (!word || word.length < 3) return word;
-
-  let w = word.toLowerCase()
-    .replace(/ä/g, "a").replace(/ö/g, "o").replace(/ü/g, "u").replace(/ß/g, "ss");
-
-  // Remove common German suffixes (plural, case, diminutive, etc.)
-  const suffixes = [
-    // Plural/case endings
-    { suf: "en", minLen: 4 }, { suf: "e", minLen: 4 }, { suf: "n", minLen: 4 },
-    { suf: "s", minLen: 4 }, { suf: "er", minLen: 4 },
-    // Common noun endings
-    { suf: "heit", minLen: 5 }, { suf: "keit", minLen: 5 }, { suf: "schaft", minLen: 6 },
-    { suf: "lich", minLen: 5 }, { suf: "ung", minLen: 4 }
-  ];
-
-  for (const {suf, minLen} of suffixes) {
-    if (w.endsWith(suf) && w.length >= minLen) {
-      w = w.slice(0, -suf.length);
-      break; // Only remove one suffix
-    }
-  }
-  return w;
+  const w = word.toLowerCase()
+    .replace(/ä/g, "a").replace(/ö/g, "o").replace(/ü/g, "u").replace(/ß/g, "ss")
+    .replace(/ą/g, "a").replace(/ć/g, "c").replace(/ę/g, "e").replace(/ł/g, "l")
+    .replace(/ń/g, "n").replace(/ó/g, "o").replace(/ś/g, "s").replace(/ź/g, "z").replace(/ż/g, "z");
+  return w.length >= 5 ? w.slice(0, 5) : w;
 }
+
+// Keep for backward compatibility
+function stemGerman(word) { return stemUniversal(word); }
 
 /* ═══════════════════════════════════════════
    MAŁE KOMPONENTY
