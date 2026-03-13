@@ -1024,7 +1024,17 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, g
       };
     }
 
-    const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90_000); // 90s timeout
+    let res;
+    try {
+      res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal: controller.signal });
+    } catch (err) {
+      if (err.name === "AbortError") throw new Error("Przekroczono limit czasu (90s). Sprawdź połączenie lub spróbuj z krótszym opisem produktu.");
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
+    }
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
       const errMsg = errData?.error?.message || errData?.error?.status || `Błąd HTTP ${res.status}`;
@@ -1739,12 +1749,15 @@ Generate ONLY a space-separated list of unique lowercase ${mp.langEn} words. The
 Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-separated lowercase words.`;
 
           try {
+            const padCtrl = new AbortController();
+            const padTimeout = setTimeout(() => padCtrl.abort(), 30_000); // 30s for pad call
             const padRes = await fetch(
               provider === "gemini"
                 ? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
                 : "https://api.groq.com/openai/v1/chat/completions",
               {
                 method: "POST",
+                signal: padCtrl.signal,
                 headers: provider === "gemini"
                   ? { "Content-Type": "application/json", "Authorization": `Bearer ${geminiKey}` }
                   : { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
@@ -1755,7 +1768,7 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
                   max_tokens: 500,
                 }),
               }
-            );
+            ).finally(() => clearTimeout(padTimeout));
             if (padRes.ok) {
               const padData = await padRes.json();
               const padText = (padData.choices?.[0]?.message?.content || "").toLowerCase().replace(/[^a-ząćęłńóśźżäöüßéèêëàâçîïôùûñáíóúě\s]/g, " ");
