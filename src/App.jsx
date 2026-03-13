@@ -1408,19 +1408,28 @@ The item_type_keyword is the most important identifier — match it as precisely
 
 Which category from the list BEST matches this product? Respond ONLY with JSON: {"categoryId": "CATEGORY_ID_HERE"}`;
 
-      const response = await callAI([
-        { role: "system", content: `You are a category matching expert. Respond with ONLY valid JSON. No explanations, no markdown, just JSON.` },
-        { role: "user", content: detectPrompt }
-      ]);
+      // Fallback: use top-scored category if AI fails
+      const fallbackId = scored.length > 0 && scored[0].score > 0 ? scored[0].id : null;
 
-      if (response && response.categoryId && typeof response.categoryId === "string") {
-        // Verify the category exists in btgData
-        const categoryExists = btgData.categories.some(cat => cat.id === response.categoryId);
-        if (categoryExists) {
-          return response.categoryId;
+      try {
+        const response = await callAI([
+          { role: "system", content: `You are a category matching expert. Respond with ONLY valid JSON. No explanations, no markdown, just JSON.` },
+          { role: "user", content: detectPrompt }
+        ]);
+
+        if (response && response.categoryId && typeof response.categoryId === "string") {
+          const categoryExists = btgData.categories.some(cat => cat.id === response.categoryId);
+          if (categoryExists) {
+            console.log("[BTG] AI detected category:", response.categoryId);
+            return response.categoryId;
+          }
         }
+        console.warn("[BTG] AI returned invalid category — using top-scored fallback:", fallbackId);
+        return fallbackId;
+      } catch (e) {
+        console.warn("[BTG] AI category detection failed:", e.message, "— using top-scored fallback:", fallbackId);
+        return fallbackId;
       }
-      return null;
     } catch (e) {
       console.warn("Category detection failed:", e);
       return null;
