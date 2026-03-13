@@ -22,8 +22,10 @@ const GROQ_MODELS = [
 ];
 
 const GEMINI_MODELS = [
-  { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", desc: "Zalecany — szybki, dobra jakość, darmowy" },
-  { id: "gemini-2.5-flash-lite", name: "Gemini 2.5 Flash Lite", desc: "Najszybszy — lekki, darmowy" },
+  { id: "gemini-3.1-flash-lite-preview", name: "Gemini 3.1 Flash Lite", desc: "500 req/dzień — szybki, wspiera zdjęcia ✨" },
+  { id: "gemma-3-27b-it", name: "Gemma 3 27B", desc: "14 400 req/dzień — open source, bez zdjęć" },
+  { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", desc: "20 req/dzień — najlepsza jakość, wspiera zdjęcia" },
+  { id: "gemini-2.5-flash-lite", name: "Gemini 2.5 Flash Lite", desc: "20 req/dzień — lekki, wspiera zdjęcia" },
 ];
 
 const BULLET_THEMES = [
@@ -853,7 +855,7 @@ function SettingsPanel({ provider, setProvider, apiKey, setApiKey, geminiKey, se
   function switchProvider(p) {
     setProvider(p);
     if (p === "gemini" && !GEMINI_MODELS.find(m => m.id === model)) {
-      setModel("gemini-2.5-flash");
+      setModel("gemini-3.1-flash-lite-preview");
     } else if (p === "groq" && !GROQ_MODELS.find(m => m.id === model)) {
       setModel("meta-llama/llama-4-scout-17b-16e-instruct");
     }
@@ -877,7 +879,7 @@ function SettingsPanel({ provider, setProvider, apiKey, setApiKey, geminiKey, se
         <div style={{ display: "flex", gap: 8 }}>
           {[
             { id: "groq", name: "Groq", desc: "Llama 4, Qwen, GPT-OSS", icon: "⚡" },
-            { id: "gemini", name: "Google Gemini", desc: "Gemini 2.5 Flash/Pro", icon: "💎" },
+            { id: "gemini", name: "Google Gemini", desc: "Gemini 3.1 Flash Lite / Gemma 3", icon: "💎" },
           ].map(p => (
             <button key={p.id} onClick={() => switchProvider(p.id)} style={{
               padding: "10px 16px", borderRadius: 8, flex: 1,
