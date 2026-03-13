@@ -22,10 +22,8 @@ const GROQ_MODELS = [
 ];
 
 const GEMINI_MODELS = [
-  { id: "gemini-3.1-flash-lite-preview", name: "Gemini 3.1 Flash Lite", desc: "500 req/dzień — szybki, wspiera zdjęcia ✨" },
+  { id: "gemini-3.1-flash-lite-preview", name: "Gemini 3.1 Flash Lite ⭐", desc: "500 req/dzień — szybki, wspiera zdjęcia" },
   { id: "gemma-3-27b-it", name: "Gemma 3 27B", desc: "14 400 req/dzień — open source, bez zdjęć" },
-  { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", desc: "20 req/dzień — najlepsza jakość, wspiera zdjęcia" },
-  { id: "gemini-2.5-flash-lite", name: "Gemini 2.5 Flash Lite", desc: "20 req/dzień — lekki, wspiera zdjęcia" },
 ];
 
 const BULLET_THEMES = [
@@ -1058,12 +1056,13 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, g
     if (provider === "gemini") {
       url = `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`;
       headers = { "Content-Type": "application/json", "Authorization": `Bearer ${geminiKey}` };
+      const isGemma = model.startsWith("gemma");
       body = {
         model: model,
         messages: messages,
         temperature: 0.7,
         max_tokens: 8192,
-        response_format: { type: "json_object" },
+        ...(isGemma ? {} : { response_format: { type: "json_object" } }),
       };
     } else {
       url = "https://api.groq.com/openai/v1/chat/completions";
@@ -2131,20 +2130,19 @@ export default function App() {
 
         {/* TAB CONTENT */}
         <div style={{ animation: "fadeIn 0.3s ease" }}>
-          {tab === "generate" && (
-            <>
-              <AIGeneratePanel listing={listing} setListing={setListing} marketplace={marketplace}
-                provider={provider} apiKey={apiKey} geminiKey={geminiKey} model={model} btg={btg} selectedCategory={selectedCategory}
-                setSelectedCategory={setSelectedCategory} categoryAttrs={categoryAttrs} setCategoryAttrs={setCategoryAttrs}
-                setCategoryLocked={setCategoryLocked}
-                secondaryKeywords={secondaryKeywords} setSecondaryKeywords={setSecondaryKeywords}
-                csvKeywords={csvKeywords} setCsvKeywords={setCsvKeywords}
-                onSaveListing={saveToHistory} />
-              {listing.title && <ListingPreview listing={listing} />}
-              {csvKeywords && listing.title && <KeywordUsageTable keywords={csvKeywords} listing={listing} secondaryKeywords={secondaryKeywords} setSecondaryKeywords={setSecondaryKeywords} />}
-              <CategoryBrowser btg={btg} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} categoryLocked={categoryLocked} setCategoryLocked={setCategoryLocked} />
-            </>
-          )}
+          {/* Generate tab — always mounted to preserve form state, hidden when inactive */}
+          <div style={{ display: tab === "generate" ? "" : "none" }}>
+            <AIGeneratePanel listing={listing} setListing={setListing} marketplace={marketplace}
+              provider={provider} apiKey={apiKey} geminiKey={geminiKey} model={model} btg={btg} selectedCategory={selectedCategory}
+              setSelectedCategory={setSelectedCategory} categoryAttrs={categoryAttrs} setCategoryAttrs={setCategoryAttrs}
+              setCategoryLocked={setCategoryLocked}
+              secondaryKeywords={secondaryKeywords} setSecondaryKeywords={setSecondaryKeywords}
+              csvKeywords={csvKeywords} setCsvKeywords={setCsvKeywords}
+              onSaveListing={saveToHistory} />
+            {listing.title && <ListingPreview listing={listing} />}
+            {csvKeywords && listing.title && <KeywordUsageTable keywords={csvKeywords} listing={listing} secondaryKeywords={secondaryKeywords} setSecondaryKeywords={setSecondaryKeywords} />}
+            <CategoryBrowser btg={btg} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} categoryLocked={categoryLocked} setCategoryLocked={setCategoryLocked} />
+          </div>
           {tab === "manual" && <ManualEditor listing={listing} setListing={setListing} />}
           {tab === "preview" && <ListingPreview listing={listing} />}
           {tab === "history" && <HistoryPanel entries={savedListings} onLoad={loadFromHistory} onDelete={deleteFromHistory} />}
