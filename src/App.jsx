@@ -314,6 +314,15 @@ function CategoryBrowser({ btg, selectedCategory, setSelectedCategory, categoryL
         )}
       </div>
 
+      {categoryLocked && selectedCategory && btg && btg.category_attrs[selectedCategory] && (
+        <div style={{
+          padding: "10px 14px", background: "rgba(34, 197, 94, 0.08)", border: `1px solid rgba(34, 197, 94, 0.3)`,
+          borderRadius: 8, marginBottom: 12, fontSize: 13, color: S.accent, fontWeight: 500,
+        }}>
+          📂 {btg.category_attrs[selectedCategory].path}
+        </div>
+      )}
+
         {showDropdown && filtered.length > 0 && (
           <div style={{
             position: "absolute", top: "100%", left: 0, right: 0, zIndex: 50, marginTop: 4,
