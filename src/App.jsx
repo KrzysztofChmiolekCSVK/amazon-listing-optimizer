@@ -1408,8 +1408,8 @@ The item_type_keyword is the most important identifier — match it as precisely
 
 Which category from the list BEST matches this product? Respond ONLY with JSON: {"categoryId": "CATEGORY_ID_HERE"}`;
 
-      // Fallback: use top-scored category if AI fails
-      const fallbackId = scored.length > 0 && scored[0].score > 0 ? scored[0].id : null;
+      // Fallback: top-scored category that ALSO has an entry in category_attrs (needed for display)
+      const fallbackId = scored.find(c => c.score > 0 && btgData.category_attrs[c.id])?.id || null;
 
       try {
         const response = await callAI([
@@ -1418,13 +1418,15 @@ Which category from the list BEST matches this product? Respond ONLY with JSON: 
         ]);
 
         if (response && response.categoryId && typeof response.categoryId === "string") {
-          const categoryExists = btgData.categories.some(cat => cat.id === response.categoryId);
+          // Must exist in both categories[] AND category_attrs (otherwise UI can't display it)
+          const categoryExists = btgData.categories.some(cat => cat.id === response.categoryId)
+                               && btgData.category_attrs[response.categoryId];
           if (categoryExists) {
             console.log("[BTG] AI detected category:", response.categoryId);
             return response.categoryId;
           }
         }
-        console.warn("[BTG] AI returned invalid category — using top-scored fallback:", fallbackId);
+        console.warn("[BTG] AI returned invalid/missing category — using top-scored fallback:", fallbackId);
         return fallbackId;
       } catch (e) {
         console.warn("[BTG] AI category detection failed:", e.message, "— using top-scored fallback:", fallbackId);
