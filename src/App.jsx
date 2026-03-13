@@ -1979,10 +1979,15 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
           borderRadius: 12, border: "1px solid rgba(34, 197, 94, 0.3)",
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12
         }}>
-          <div>
+          <div style={{ flex: 1 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: "#22c55e", display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 16 }}>📂</span> Zablokowana kategoria BTG
             </div>
+            {selectedCategory && btg && btg.category_attrs[selectedCategory] && (
+              <div style={{ fontSize: 13, color: S.accent, marginTop: 6, fontWeight: 500 }}>
+                {btg.category_attrs[selectedCategory].path}
+              </div>
+            )}
             <div style={{ fontSize: 12, color: "#a1a1aa", marginTop: 4 }}>
               Kategoria produktu zostanie zachowana dla wszystkich marketplace'ów. Będzie sama dla DE, FR, ES itd.
             </div>
