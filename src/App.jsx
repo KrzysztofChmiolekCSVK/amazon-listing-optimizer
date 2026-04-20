@@ -432,7 +432,7 @@ function ListingPreview({ listing }) {
   const tLen = listing.title.length;
   const titleScore = tLen > 200 ? 20 : tLen >= 160 ? 100 : tLen > 10 ? Math.round((tLen / 160) * 85) : 0;
   const bulletScore = listing.bullets.filter(b => b.trim().length > 0).length * 20;
-  const bBytes = byteCount(listing.backendKeywords);
+  const bBytes = (listing.backendKeywords || "").length;
   const backendScore = Math.min(100, Math.round((bBytes / 250) * 100));
   const overall = Math.round((titleScore + bulletScore + backendScore) / 3);
 
@@ -488,7 +488,7 @@ function ListingPreview({ listing }) {
           <div style={{ padding: 12, background: "#0d0e14", borderRadius: 8, fontSize: 12, color: "#a1a5ae", fontFamily: S.mono, wordBreak: "break-all", lineHeight: 1.6 }}>
             {listing.backendKeywords}
           </div>
-          <div style={{ marginTop: 4 }}><CharBadge current={bBytes} max={250} label="bajty" /></div>
+          <div style={{ marginTop: 4 }}><CharBadge current={bBytes} max={250} label="znaków" /></div>
         </div>
       )}
 
@@ -1179,8 +1179,8 @@ Do NOT invent new paragraphs, change the logical progression, or remove details.
 ═══════════════════════════════════════
 BACKEND KEYWORDS RULES (CRITICAL)
 ═══════════════════════════════════════
-- HARD LIMIT: Max 250 bytes. Special chars (ö, ü, ä, ß, é, ñ, ą, ę, etc.) = 2 bytes each.
-- TARGET: 240-250 bytes. This is CRITICAL. You MUST reach at least 240 bytes. Every unused byte is a MISSED indexing opportunity.
+- HARD LIMIT: Max 250 characters (string length, not bytes).
+- TARGET: 220-250 characters. This is CRITICAL. You MUST reach at least 220 characters. Every unused character is a MISSED indexing opportunity.
 - All lowercase, separated by spaces only. No commas, no punctuation.
 - ABSOLUTELY NO DUPLICATE WORDS. Every single word must appear EXACTLY ONCE. Before finalizing, scan your backend keywords and remove any word that appears more than once.
 - MUST NOT repeat ANY word already in the title, bullet points, or description. These are COMPLEMENTARY terms only.
@@ -1227,7 +1227,7 @@ FINAL CHECK before responding:
 - Is the title 160-200 characters? If under 160, ADD more keywords/features.
 - Does the first 70 chars clearly identify the product?
 - Is the TOTAL of all 5 bullets between 950-1000 characters? HARD LIMIT: 1000 chars max. If over 1000, SHORTEN bullets. If under 950, EXPAND them. Count carefully.
-- Are backend keywords 240-250 bytes? If under 235, you MUST add more words. Think harder about synonyms, related categories, use cases.
+- Are backend keywords 220-250 characters? If under 220, you MUST add more words. Think harder about synonyms, related categories, use cases.
 - Does bullet #1 match the title's primary product identity?
 - Are backend keywords truly COMPLEMENTARY (no words from title/bullets)?
 - Do backend keywords contain ANY duplicate words? If yes, REMOVE duplicates and replace with new unique words.
@@ -1280,14 +1280,14 @@ Double-check: Is every word in your JSON response written in ${mp.langEn}? If no
       const titleLen = (parsed.title || "").length;
       const bulletsTotal = [parsed.bullet1, parsed.bullet2, parsed.bullet3, parsed.bullet4, parsed.bullet5]
         .map(b => (b || "").length).reduce((a, b) => a + b, 0);
-      const backendBytes = byteCount(parsed.backendKeywords || "");
+      const backendBytes = (parsed.backendKeywords || "").length;
 
       const issues = [];
       if (titleLen > 200) issues.push(`Title is ${titleLen} chars — this EXCEEDS the HARD LIMIT of 200 characters. You MUST shorten the title to fit within 160-200 characters. Remove less important descriptors or use more concise phrasing.`);
       if (titleLen < 160) issues.push(`Title is only ${titleLen} chars — this is too short. Expand to 160-200 chars by adding more keywords, features, or use cases.`);
       if (bulletsTotal > 1000) issues.push(`Bullets total is ${bulletsTotal} chars — this EXCEEDS the HARD LIMIT of 1000 characters. You MUST shorten the bullets to fit within 950-1000 characters total. Trim the longest bullets first while keeping key information.`);
       else if (bulletsTotal < 950) issues.push(`Bullets total only ${bulletsTotal} chars — this is TOO SHORT. Each bullet MUST be 190-200 characters. EXPAND every bullet with more specific details: exact dimensions, weight, materials, compatible models, certifications, use cases. Target: 950-1000 chars total.`);
-      if (backendBytes < 235) issues.push(`Backend keywords only ${backendBytes}/250 bytes — you MUST add more words to reach 240-250 bytes. Brainstorm: synonyms, related categories, compatible products, use cases, materials, locations, actions. NO duplicates, NO words from title/bullets.`);
+      if (backendBytes < 215) issues.push(`Backend keywords only ${backendBytes}/250 characters — you MUST add more words to reach 220-250 characters. Brainstorm: synonyms, related categories, compatible products, use cases, materials, locations, actions. NO duplicates, NO words from title/bullets.`);
 
       // Validate benefits
       const benefitCount = (parsed.benefits && Array.isArray(parsed.benefits)) ? parsed.benefits.length : 0;
@@ -1316,7 +1316,7 @@ ${JSON.stringify(parsed, null, 2)}
 Fix ALL issues above. Keep everything in ${mp.langEn}. Make the listing BIGGER and BETTER.
 For the title: add secondary keywords, features, or use cases to reach 160-200 chars.
 For bullets: the TOTAL of all 5 bullets MUST be between 950-1000 characters. HARD LIMIT: 1000 max. Each bullet should be 180-200 chars. If over 1000, shorten the longest bullets. If under 950, add details.
-For backend keywords: brainstorm ALL possible synonyms, alternate names, related categories, compatible products, use cases — pack it to 240-250 bytes. Remember: no words already in title or bullets, no brand names, no stop words, NO DUPLICATE WORDS.
+For backend keywords: brainstorm ALL possible synonyms, alternate names, related categories, compatible products, use cases — pack it to 220-250 characters. Remember: no words already in title or bullets, no brand names, no stop words, NO DUPLICATE WORDS.
 For benefits: EXACTLY 4 benefits, each maximum 6 words. They must be short, punchy selling points highlighting product advantages. Make them benefit-focused, not feature-focused.
 CRITICAL - Forbidden Words: REMOVE any Amazon-forbidden words like: best seller, best price, approved, guaranteed, top rated, limited time, sale, cure, heal, sanitize, etc. Replace with alternative phrasing that conveys the same benefit WITHOUT using forbidden words. Examples: instead of "best seller" use "bestselling" or "customer favorite"; instead of "guaranteed" use "backed by warranty" or "reliable".
 
@@ -1549,25 +1549,25 @@ Respond ONLY with a JSON array of 3 strings: ["sentence 1.", "sentence 2.", "sen
         const stopWords = new Set(["und","oder","für","mit","von","den","dem","des","die","der","das","ein","eine","einen","einem","einer","zu","zur","zum","im","in","am","an","auf","aus","bei","bis","nach","über","unter","vor","entre","les","des","pour","avec","dans","une","sur","the","and","for","with","from","that","this","are","was","not","but","have","has","been","will","can","all","its","our","your","also","than","into","only","del","los","las","por","con","una","como","más","los","est","plus","que","qui","son","ses","ont","par","aux","ces","het","van","een","zijn","bij","nog","och","att","som","har","den","det","på","med","av","do","na","ze","od","po","za","się","jest","jak","lub","czy","nie","co","to","we","te","ma","tak","tu","tam","ten","ta","ich","ale","i","a","o","w","z","u","e","y","il","di","la","le","lo","da","al","no","si","se","en","el","de"]);
         bkWords = bkWords.filter(w => !stopWords.has(w));
         
-        // 4. Trim to exactly 250 bytes max
+        // 4. Trim to exactly 250 characters max
         let result = [];
         for (const word of bkWords) {
           result.push(word);
           const joined = result.join(" ");
-          if (byteCount(joined) > 250) {
-            result.pop(); // remove the word that caused overflow
+          if (joined.length > 250) {
+            result.pop();
             break;
           }
         }
-        
+
         parsed.backendKeywords = result.join(" ");
 
-        // 5. If under 235 bytes after cleanup, ask AI for more complementary keywords
-        const finalBytes = byteCount(parsed.backendKeywords);
-        if (finalBytes < 235) {
+        // 5. If under 215 characters after cleanup, ask AI for more complementary keywords
+        const finalBytes = parsed.backendKeywords.length;
+        if (finalBytes < 215) {
           setStatus("Dobijanie backend keywords...");
-          const remainingBytes = 248 - finalBytes;
-          const padPrompt = `I need MORE backend search terms for an Amazon ${mp.langEn} listing. 
+          const remainingChars = 248 - finalBytes;
+          const padPrompt = `I need MORE backend search terms for an Amazon ${mp.langEn} listing.
 
 Product: ${parsed.title}
 
@@ -1577,7 +1577,7 @@ Generate ONLY a space-separated list of unique lowercase ${mp.langEn} words. The
 - Synonyms, related product categories, compatible accessories, use cases, materials, locations, actions
 - NOT in the forbidden list above
 - No stop words, no brand names, no punctuation
-- Total must fit in approximately ${remainingBytes} bytes (special chars like ö,ü,ä,ą,ę = 2 bytes each)
+- Total must fit in approximately ${remainingChars} characters
 
 Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-separated lowercase words.`;
 
@@ -1609,11 +1609,11 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
               const usedWords = new Set([...listingWords, ...result, ...stopWords]);
               const uniquePad = [...new Set(padWords)].filter(w => !usedWords.has(w) && w.length > 2);
               
-              // Add words until we hit 250 bytes
+              // Add words until we hit 250 characters
               const padResult = [...result];
               for (const word of uniquePad) {
                 padResult.push(word);
-                if (byteCount(padResult.join(" ")) > 250) {
+                if (padResult.join(" ").length > 250) {
                   padResult.pop();
                   break;
                 }
@@ -1884,7 +1884,7 @@ function ManualEditor({ listing, setListing }) {
       <Field label="Słowa kluczowe backend (Search Terms)" value={listing.backendKeywords}
         onChange={v => setListing({ ...listing, backendKeywords: v })}
         placeholder="małe litery oddzielone spacjami synonimy skróty alternatywne nazwy..."
-        multi maxBytes={250} helper="Małe litery, bez przecinków, bez słów z tytułu/punktów, bez nazw marek." />
+        multi maxChars={250} helper="Małe litery, bez przecinków, bez słów z tytułu/punktów, bez nazw marek." />
 
       <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${S.border}` }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: S.accent, marginBottom: 14, display: "flex", alignItems: "center", gap: 6 }}>
