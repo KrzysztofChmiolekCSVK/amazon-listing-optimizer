@@ -430,7 +430,7 @@ function SectionHead({ children, copyText, copyLabel }) {
 function ListingPreview({ listing }) {
   if (!listing) return null;
   const tLen = listing.title.length;
-  const titleScore = tLen > 200 ? 20 : tLen >= 160 ? 100 : tLen > 10 ? Math.round((tLen / 160) * 85) : 0;
+  const titleScore = tLen > 200 ? 20 : tLen >= 170 ? 100 : tLen > 10 ? Math.round((tLen / 170) * 85) : 0;
   const bulletScore = listing.bullets.filter(b => b.trim().length > 0).length * 20;
   const bBytes = (listing.backendKeywords || "").length;
   const backendScore = Math.min(100, Math.round((bBytes / 250) * 100));
@@ -1125,7 +1125,7 @@ Do not invent new features that aren't in these reference bullets. Keep the same
 ═══════════════════════════════════════
 TITLE RULES (CRITICAL — follow exactly)
 ═══════════════════════════════════════
-- HARD LIMIT: Max 200 characters. AIM FOR 160-200 characters. A short title wastes keyword opportunities.
+- HARD LIMIT: Max 200 characters. AIM FOR 170-200 characters. MINIMUM is 170 characters — a shorter title wastes keyword opportunities.
 - The first 66-70 characters are the MOST VALUABLE — this is what shows on mobile (~70% of Amazon traffic). The customer MUST understand what the product is within these first characters.
 - STRUCTURE: ${brandValue ? `[${brandValue}] ` : "[Brand] "}[Primary Keyword = What It Is] – [Key Material/Feature] [Size] – [Secondary Feature/Keyword] – [Tertiary Keyword/Use Case] – [Model/Pack]
 - SINGLE IDENTITY FIRST: The first 66 chars must clearly state ONE product function. Never open with multiple functions (e.g. "heater and sterilizer") — this confuses the A9 algorithm about what the product IS.
@@ -1224,7 +1224,7 @@ Respond ONLY with valid JSON. No backticks, no preamble, no explanation:
 {"title":"...","bullet1":"...","bullet2":"...","bullet3":"...","bullet4":"...","bullet5":"...","description":"...","backendKeywords":"...","benefits":["benefit1","benefit2","benefit3","benefit4"]}
 
 FINAL CHECK before responding:
-- Is the title 160-200 characters? If under 160, ADD more keywords/features.
+- Is the title 170-200 characters? If under 170, ADD more keywords/features.
 - Does the first 70 chars clearly identify the product?
 - Is the TOTAL of all 5 bullets between 950-1000 characters? HARD LIMIT: 1000 chars max. If over 1000, SHORTEN bullets. If under 950, EXPAND them. Count carefully.
 - Are backend keywords 220-250 characters? If under 220, you MUST add more words. Think harder about synonyms, related categories, use cases.
@@ -1283,8 +1283,8 @@ Double-check: Is every word in your JSON response written in ${mp.langEn}? If no
       const backendBytes = (parsed.backendKeywords || "").length;
 
       const issues = [];
-      if (titleLen > 200) issues.push(`Title is ${titleLen} chars — this EXCEEDS the HARD LIMIT of 200 characters. You MUST shorten the title to fit within 160-200 characters. Remove less important descriptors or use more concise phrasing.`);
-      if (titleLen < 160) issues.push(`Title is only ${titleLen} chars — this is too short. Expand to 160-200 chars by adding more keywords, features, or use cases.`);
+      if (titleLen > 200) issues.push(`Title is ${titleLen} chars — this EXCEEDS the HARD LIMIT of 200 characters. You MUST shorten the title to fit within 170-200 characters. Remove less important descriptors or use more concise phrasing.`);
+      if (titleLen < 170) issues.push(`Title is only ${titleLen} chars — MINIMUM is 170 characters. Expand to 170-200 chars by adding more keywords, features, or use cases.`);
       if (bulletsTotal > 1000) issues.push(`Bullets total is ${bulletsTotal} chars — this EXCEEDS the HARD LIMIT of 1000 characters. You MUST shorten the bullets to fit within 950-1000 characters total. Trim the longest bullets first while keeping key information.`);
       else if (bulletsTotal < 950) issues.push(`Bullets total only ${bulletsTotal} chars — this is TOO SHORT. Each bullet MUST be 190-200 characters. EXPAND every bullet with more specific details: exact dimensions, weight, materials, compatible models, certifications, use cases. Target: 950-1000 chars total.`);
       if (backendBytes < 215) issues.push(`Backend keywords only ${backendBytes}/250 characters — you MUST add more words to reach 220-250 characters. Brainstorm: synonyms, related categories, compatible products, use cases, materials, locations, actions. NO duplicates, NO words from title/bullets.`);
@@ -1314,7 +1314,7 @@ Here is the current listing:
 ${JSON.stringify(parsed, null, 2)}
 
 Fix ALL issues above. Keep everything in ${mp.langEn}. Make the listing BIGGER and BETTER.
-For the title: add secondary keywords, features, or use cases to reach 160-200 chars.
+For the title: add secondary keywords, features, or use cases to reach 170-200 chars.
 For bullets: the TOTAL of all 5 bullets MUST be between 950-1000 characters. HARD LIMIT: 1000 max. Each bullet should be 180-200 chars. If over 1000, shorten the longest bullets. If under 950, add details.
 For backend keywords: brainstorm ALL possible synonyms, alternate names, related categories, compatible products, use cases — pack it to 220-250 characters. Remember: no words already in title or bullets, no brand names, no stop words, NO DUPLICATE WORDS.
 For benefits: EXACTLY 4 benefits, each maximum 6 words. They must be short, punchy selling points highlighting product advantages. Make them benefit-focused, not feature-focused.
