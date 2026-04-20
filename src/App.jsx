@@ -529,7 +529,7 @@ function ListingPreview({ listing }) {
       {listing.description && (
         <div style={{ marginBottom: 20 }}>
           <SectionHead copyText={listing.description} copyLabel="opis">Opis produktu</SectionHead>
-          <div style={{ fontSize: 13, color: "#c4c8d0", lineHeight: 1.6, fontFamily: S.font }} dangerouslySetInnerHTML={{ __html: (listing.description || "").replace(/</g, "&lt;").replace(/&lt;br\s*\/?>/gi, "<br>") }} />
+          <div style={{ fontSize: 13, color: "#c4c8d0", lineHeight: 1.6, fontFamily: S.font }} dangerouslySetInnerHTML={{ __html: (listing.description || "").replace(/</g, "&lt;").replace(/&lt;br\s*\/?>/gi, "<br>").replace(/&lt;\/p>/gi, "</p>").replace(/&lt;p>/gi, "<p>") }} />
         </div>
       )}
 
@@ -1224,8 +1224,8 @@ Do NOT invent new paragraphs, change the logical progression, or remove details.
 - Paint a picture of the product in use — help the customer imagine owning it.
 - Include long-tail keywords naturally.
 - End with a confidence builder (warranty mention, brand quality, satisfaction).`}
-- Use <br> tags to separate paragraphs for better readability. Example: "First paragraph text.<br><br>Second paragraph text."
-- No other HTML tags allowed — only <br> for line breaks.
+- Wrap each paragraph in <p>...</p> tags. Example: "<p>First paragraph text.</p><p>Second paragraph text.</p>"
+- Only <p> tags allowed — no <br>, no other HTML.
 
 ═══════════════════════════════════════
 BACKEND KEYWORDS RULES (CRITICAL)
