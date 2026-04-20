@@ -249,7 +249,7 @@ function MarketplaceSelector({ selected, setSelected }) {
    BTG CATEGORY BROWSER
    ═══════════════════════════════════════════ */
 
-function CategoryBrowser({ btg, selectedCategory, setSelectedCategory, categoryLocked, setCategoryLocked, categorySuggestions, setCategorySuggestions }) {
+function CategoryBrowser({ btg, selectedCategory, setSelectedCategory, categoryLocked, setCategoryLocked }) {
   const [search, setSearch] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const ref = useRef(null);
@@ -274,7 +274,6 @@ function CategoryBrowser({ btg, selectedCategory, setSelectedCategory, categoryL
   const handlePickCategory = (catId) => {
     setSelectedCategory(catId);
     setCategoryLocked(true);
-    setCategorySuggestions([]);
     setSearch("");
   };
 
@@ -285,60 +284,10 @@ function CategoryBrowser({ btg, selectedCategory, setSelectedCategory, categoryL
         <div>
           <div style={{ fontSize: 15, fontWeight: 700, color: S.text, fontFamily: S.font }}>Kategoria produktu (BTG)</div>
           <div style={{ fontSize: 11, color: S.dim }}>
-            {categorySuggestions?.length > 0 && !categoryLocked
-              ? "Wybierz kategorię z propozycji lub wyszukaj ręcznie"
-              : "Wyszukaj kategorię z Browse Tree Guide — atrybuty załadują się automatycznie"}
+            Wyszukaj kategorię z Browse Tree Guide — atrybuty załadują się automatycznie
           </div>
         </div>
       </div>
-
-      {/* === SUGGESTIONS PANEL — shown after listing generation, before user picks === */}
-      {categorySuggestions?.length > 0 && !categoryLocked && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "#f59e0b", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-            🎯 Proponowane kategorie — kliknij aby wybrać
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            {categorySuggestions.map((sug, idx) => {
-              const isTop = idx === 0;
-              return (
-                <button key={sug.id} onClick={() => handlePickCategory(sug.id)}
-                  style={{
-                    display: "block", width: "100%", padding: "10px 14px", textAlign: "left",
-                    background: isTop ? "#f59e0b12" : "#14151e",
-                    border: isTop ? "1px solid #f59e0b40" : `1px solid ${S.border}`,
-                    borderRadius: 8, cursor: "pointer", transition: "all 0.15s",
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "#f59e0b20"; e.currentTarget.style.borderColor = "#f59e0b60"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = isTop ? "#f59e0b12" : "#14151e"; e.currentTarget.style.borderColor = isTop ? "#f59e0b40" : S.border; }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: isTop ? 600 : 400, color: isTop ? "#f59e0b" : S.text, fontFamily: S.font }}>
-                        {isTop && "⭐ "}{sug.path}
-                      </div>
-                      <div style={{ fontSize: 11, color: S.dim, marginTop: 2, fontFamily: S.mono }}>
-                        item_type: <span style={{ color: S.accent }}>{sug.item_type}</span>
-                      </div>
-                    </div>
-                    <div style={{ fontSize: 11, color: S.dim, whiteSpace: "nowrap", fontFamily: S.mono }}>
-                      score: {sug.score.toFixed(0)}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-          {categorySuggestions[0]?.lowConfidence && (
-            <div style={{ marginTop: 8, padding: "8px 12px", background: "#f59e0b15", border: "1px solid #f59e0b30", borderRadius: 8, fontSize: 11, color: "#f59e0b" }}>
-              ⚠️ Niska pewność dopasowania — plik BTG obejmuje tylko <strong>Home & Kitchen</strong>. Jeśli Twój produkt należy do innej kategorii (Garden & Outdoor, Tools, Sports itp.), wyszukaj ręcznie poniżej lub pomiń kategorię.
-            </div>
-          )}
-          <div style={{ fontSize: 10, color: S.dim, marginTop: 8 }}>
-            Nie pasuje żadna? Wyszukaj ręcznie poniżej lub wygeneruj listing ponownie.
-          </div>
-        </div>
-      )}
 
       {/* === SEARCH / LOCKED STATE === */}
       <div ref={ref} style={{ position: "relative", marginBottom: 12, display: "flex", gap: 8, alignItems: "center" }}>
@@ -361,7 +310,7 @@ function CategoryBrowser({ btg, selectedCategory, setSelectedCategory, categoryL
           </span>
         </div>
         {categoryLocked && (
-          <button onClick={() => { setCategoryLocked(false); setSelectedCategory(null); setCategorySuggestions([]); setSearch(""); }}
+          <button onClick={() => { setCategoryLocked(false); setSelectedCategory(null); setSearch(""); }}
             style={{
               padding: "8px 12px", background: S.accent + "20", border: `1px solid ${S.accent}`, borderRadius: 6,
               color: S.accent, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: S.font,
@@ -948,7 +897,7 @@ function SettingsPanel({ provider, setProvider, apiKey, setApiKey, geminiKey, se
    AI GENERATE PANEL
    ═══════════════════════════════════════════ */
 
-function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, geminiKey, model, btg, selectedCategory, setSelectedCategory, categoryAttrs, setCategoryAttrs, categoryLocked, setCategoryLocked, secondaryKeywords, setSecondaryKeywords, csvKeywords, setCsvKeywords, onSaveListing, categorySuggestions, setCategorySuggestions }) {
+function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, geminiKey, model, btg, selectedCategory, setSelectedCategory, categoryAttrs, setCategoryAttrs, categoryLocked, setCategoryLocked, secondaryKeywords, setSecondaryKeywords, csvKeywords, setCsvKeywords, onSaveListing }) {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [productInfo, setProductInfo] = useState("");
@@ -1291,108 +1240,6 @@ You MUST write the ENTIRE listing (title, all 5 bullets, description, backend ke
 The source material above may be in Polish, German, English, or any other language — that does NOT matter.
 Your output language is ONLY ${mp.langEn}. If even a single sentence is not in ${mp.langEn}, you have FAILED.
 Double-check: Is every word in your JSON response written in ${mp.langEn}? If not, rewrite it now.`;
-  }
-
-  // Returns top 10 scored category suggestions (no AI call — purely algorithmic, instant)
-  function detectCategorySuggestions(listing, btgData) {
-    if (!btgData || !btgData.categories) return [];
-
-    // Extract meaningful words from title + bullets + backend keywords
-    const stopWords = new Set(["the","and","for","with","from","that","this","are","not","but","all","its","also","into","only","sehr","und","für","mit","von","eine","einen","einer","einem","ist","das","die","der","des","dem","ein","auch","oraz","dla","do","ze","się","jest","jak","lub","czy","nie"]);
-    const allText = [listing.title || "", (listing.bullets || []).join(" "), listing.backendKeywords || ""].join(" ");
-    const words = allText
-      .toLowerCase()
-      .replace(/[^a-ząćęłńóśźżäöüßéèêëàâçîïôùûñáíóú\s]/g, " ")
-      .split(/\s+/)
-      .filter(w => w.length >= 3 && !stopWords.has(w));
-    const uniqueWords = [...new Set(words)].slice(0, 40);
-
-    // Semantic translation: multilingual listing words → English BTG category words
-    const semanticMap = [
-      { from: ["reiniger","reinigung","reinigt","reinigen","pulizia","pulitore","limpiador","limpieza","nettoyant","nettoyage","środek","czyszczący","czyszczenia","schoonmaakmiddel","rengöringsmedel","środki"], to: ["cleaner","cleaners","cleaning"] },
-      { from: ["tabletten","tablette","tablet","pastiglie","pastilla","pastilles","tabs","tab","blocco","bloc","block","kostki","kostka"], to: ["tablet","tabs","block","stone"] },
-      { from: ["wc","klo","klosett","toilette","toaleta","toalet","sanitär","sanitaire","bagno","baño","salle","bain"], to: ["toilet","bathroom"] },
-      { from: ["entkalker","entkalkung","anticalcare","anticalcaire","descalcificador","odkamieniacz","kalkverwijderaar","avkalkningsmedel"], to: ["descaler","descaling","limescale"] },
-      { from: ["wasserfilter","filtre","filtro","filtr","waterfilter","vattenfilter","filter"], to: ["filter","water"] },
-      { from: ["duft","parfum","profumo","fragancia","zapach","geur","doft","scent"], to: ["scent","fragrance"] },
-      { from: ["antibakteriell","antibacterien","antibacterial","antibatterico","antybakteryjny"], to: ["antibacterial","antimicrobial"] },
-      { from: ["haushalt","ménage","hogar","casa","domowy","huishoud","hushåll"], to: ["household","home"] },
-      { from: ["küche","cuisine","cocina","cucina","kuchnia","keuken","kök"], to: ["kitchen"] },
-      { from: ["bad","badezimmer","salle de bain","baño","bagno","łazienka","badkamer","badrum"], to: ["bathroom","bath"] },
-      { from: ["spülmaschine","lave-vaisselle","lavavajillas","lavastoviglie","zmywarka","vaatwasser","diskmaskin"], to: ["dishwasher"] },
-      { from: ["waschmaschine","lave-linge","lavadora","lavatrice","pralka","wasmachine","tvättmaskin"], to: ["washing","laundry"] },
-      { from: ["flasche","bouteille","botella","bottiglia","butelka","fles","flaska"], to: ["bottle"] },
-      { from: ["schneidbrett","planche","tabla","tagliere","deska","snijplank","skärbräda"], to: ["cutting","board"] },
-      { from: ["kaffee","café","café","caffè","kawa","koffie","kaffe"], to: ["coffee"] },
-      { from: ["espresso","kaffeemaschine","machine","macchina","máquina","ekspres","koffiezetapparaat"], to: ["coffee","espresso","machine"] },
-      { from: ["staubsauger","aspirapolvere","aspirateur","aspiradora","odkurzacz","stofzuiger","dammsugare"], to: ["vacuum","cleaner"] },
-      { from: ["beutel","sac","bolsa","sacchetto","worek","zak","påse","tüte","tüten"], to: ["bag","bags"] },
-      { from: ["säge","scie","sierra","sega","piła","zaag","såg","astsäge","astschere"], to: ["saw","pruner","pruning","cutter"] },
-      { from: ["garten","jardin","jardín","giardino","ogród","tuin","trädgård"], to: ["garden","gardening","outdoor"] },
-      { from: ["baum","arbre","árbol","albero","drzewo","boom","träd"], to: ["tree","branch","pruning"] },
-      { from: ["schere","cisaille","tijera","cesoia","nożyce","schaar","sax"], to: ["shears","scissors","cutter","pruner"] },
-      { from: ["teleskop","telescopique","telescópico","telescopico","teleskopowy","telescopisch","teleskopisk"], to: ["telescoping","extendable","pole"] },
-    ];
-
-    // Build expanded word set
-    const expandedWords = new Set(uniqueWords);
-    for (const { from, to } of semanticMap) {
-      for (const fw of from) {
-        if (uniqueWords.some(w => w.includes(fw) || fw.includes(w))) {
-          to.forEach(tw => expandedWords.add(tw));
-        }
-      }
-    }
-    const allMatchWords = [...expandedWords];
-
-    // Score each category
-    const scored = btgData.categories
-      .filter(cat => btgData.category_attrs[cat.id]) // Only categories with attrs
-      .map(cat => {
-        const itemTypeLower = cat.item_type.toLowerCase();
-        const pathLower = cat.path.toLowerCase();
-        const itemTypeWords = itemTypeLower.split(/[-_\s]+/).filter(x => x.length >= 2);
-        const pathWords = pathLower.split(/[-_\s>]+/).filter(x => x.length >= 2);
-
-        let score = 0;
-        for (const w of allMatchWords) {
-          if (itemTypeLower.includes(w)) score += w.length * 3;
-          else if (pathLower.includes(w)) score += w.length;
-          else {
-            for (const iw of itemTypeWords) {
-              if (iw.startsWith(w) || w.startsWith(iw)) score += Math.min(w.length, iw.length) * 2;
-            }
-            for (const pw of pathWords) {
-              if (pw.startsWith(w) || w.startsWith(pw)) score += Math.min(w.length, pw.length) * 0.5;
-            }
-          }
-        }
-
-        // Penalize irrelevant category words
-        const penaltyWords = ["storage","container","paper","holder","rack","stand","organizer","hanger","shelf"];
-        for (const pw of penaltyWords) {
-          if (itemTypeLower.includes(pw) && !allMatchWords.some(w => w.includes(pw))) {
-            score -= pw.length * 4;
-          }
-        }
-
-        return { ...cat, score };
-      });
-
-    scored.sort((a, b) => b.score - a.score);
-    console.log(`[BTG] Top 10 suggestions for "${listing.title?.slice(0, 60)}":`, scored.slice(0, 10).map(c => `${c.item_type}(${c.score.toFixed(0)})`));
-
-    // Return top 10 with score > 0
-    // Mark as low confidence if best score is weak (product likely outside BTG coverage)
-    const top = scored.filter(c => c.score > 0).slice(0, 10);
-    const bestScore = top[0]?.score || 0;
-    return top.map(c => ({
-      id: c.id,
-      path: btgData.category_attrs[c.id].path,
-      item_type: c.item_type,
-      score: c.score,
-      lowConfidence: bestScore < 30, // BTG may not cover this product category
-    }));
   }
 
   async function generate() {
@@ -1792,12 +1639,6 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
       setReferenceBullets([parsed.bullet1||"", parsed.bullet2||"", parsed.bullet3||"", parsed.bullet4||"", parsed.bullet5||""]);
       setReferenceDescription(parsed.description || "");
 
-      // Generate category suggestions (only on first generation, before user picks one)
-      if (btg && !categoryLocked) {
-        const suggestions = detectCategorySuggestions(newListing, btg);
-        setCategorySuggestions(suggestions);
-      }
-
       setStatus("");
     } catch (e) {
       const msg = e.message || "";
@@ -2082,7 +1923,6 @@ export default function App() {
   const [btg, setBtg] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [categoryLocked, setCategoryLocked] = useState(false);
-  const [categorySuggestions, setCategorySuggestions] = useState([]); // Top 10 BTG suggestions after listing generation
   const [categoryAttrs, setCategoryAttrs] = useState({});
   const [secondaryKeywords, setSecondaryKeywords] = useState("");
   const [csvKeywords, setCsvKeywords] = useState(null);
@@ -2199,12 +2039,10 @@ export default function App() {
               categoryLocked={categoryLocked} setCategoryLocked={setCategoryLocked}
               secondaryKeywords={secondaryKeywords} setSecondaryKeywords={setSecondaryKeywords}
               csvKeywords={csvKeywords} setCsvKeywords={setCsvKeywords}
-              categorySuggestions={categorySuggestions} setCategorySuggestions={setCategorySuggestions}
               onSaveListing={saveToHistory} />
             {listing.title && <ListingPreview listing={listing} />}
             <CategoryBrowser btg={btg} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory}
-              categoryLocked={categoryLocked} setCategoryLocked={setCategoryLocked}
-              categorySuggestions={categorySuggestions} setCategorySuggestions={setCategorySuggestions} />
+              categoryLocked={categoryLocked} setCategoryLocked={setCategoryLocked} />
           </div>
           {tab === "manual" && <ManualEditor listing={listing} setListing={setListing} />}
           {tab === "preview" && <ListingPreview listing={listing} />}
