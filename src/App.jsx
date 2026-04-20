@@ -1917,8 +1917,8 @@ export default function App() {
   const [tab, setTab] = useState("generate");
   const [marketplace, setMarketplace] = useState("DE");
   const [provider, setProvider] = useState("gemini");
-  const [apiKey, setApiKey] = useState("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");
-  const [geminiKey, setGeminiKey] = useState("AIzaSyCoyA98A6KboCPhR3KsNnqht8iclhka5GA");
+  const [apiKey, setApiKey] = useState(import.meta.env.VITE_GROQ_KEY || "");
+  const [geminiKey, setGeminiKey] = useState(import.meta.env.VITE_GEMINI_KEY || "");
   const [model, setModel] = useState("gemini-3.1-flash-lite-preview");
   const [btg, setBtg] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
