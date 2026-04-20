@@ -1242,6 +1242,17 @@ Your output language is ONLY ${mp.langEn}. If even a single sentence is not in $
 Double-check: Is every word in your JSON response written in ${mp.langEn}? If not, rewrite it now.`;
   }
 
+  function wrapDescriptionInPTags(text) {
+    if (!text) return "";
+    if (text.includes("<p>")) return text; // already has <p> tags
+    return text
+      .split(/\n{2,}/)
+      .map(p => p.trim())
+      .filter(Boolean)
+      .map(p => `<p>${p}</p>`)
+      .join("");
+  }
+
   async function generate() {
     if (!productInfo.trim() && uploadedFiles.length === 0 && imageData.length === 0) {
       return setError("Opisz swój produkt lub wgraj załączniki z danymi (instrukcje, zdjęcia).");
@@ -1627,7 +1638,7 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
       const newListing = {
         title: parsed.title || "",
         bullets: [parsed.bullet1||"", parsed.bullet2||"", parsed.bullet3||"", parsed.bullet4||"", parsed.bullet5||""],
-        description: parsed.description || "",
+        description: wrapDescriptionInPTags(parsed.description || ""),
         backendKeywords: parsed.backendKeywords || "",
         benefits: (parsed.benefits && Array.isArray(parsed.benefits))
           ? parsed.benefits.map(b => (b || "").trim()).slice(0, 4)
