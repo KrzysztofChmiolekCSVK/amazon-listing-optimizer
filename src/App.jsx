@@ -116,24 +116,49 @@ function checkForbiddenWords(text, forbiddenList) {
 
 function byteCount(s) { return new TextEncoder().encode(s || "").length; }
 
-// Universal stemmer — works for all inflected languages (PL, DE, NL, IT, ES, FR, SE)
-// Uses 5-char prefix: kawowe→kawow, kawowa→kawow, czyszczące→czysz, czyszczenie→czysz
-// koffiemachine→koffi, koffiemachines→koffi, mineralny→miner, mineralnych→miner
+function readStoredValue(key, fallback = "") {
+  try { return localStorage.getItem(key) || fallback; } catch { return fallback; }
+}
+
+function writeStoredValue(key, value) {
+  try { localStorage.setItem(key, value || ""); } catch {}
+}
+
+function getInitialProvider() {
+  return readStoredValue("amz-provider", import.meta.env.VITE_GEMINI_KEY ? "gemini" : (import.meta.env.VITE_GROQ_KEY ? "groq" : "gemini"));
+}
+
+function getInitialModel() {
+  const provider = getInitialProvider();
+  const storedModel = readStoredValue("amz-model", "");
+  const models = provider === "gemini" ? GEMINI_MODELS : GROQ_MODELS;
+  return models.some(m => m.id === storedModel) ? storedModel : models[0].id;
+}
+
+async function readApiError(res) {
+  const raw = await res.text().catch(() => "");
+  if (!raw) return `Blad HTTP ${res.status}`;
+
+  try {
+    const data = JSON.parse(raw);
+    return data?.error?.message || data?.error?.status || data?.message || raw;
+  } catch {
+    return raw;
+  }
+}
+
+// Universal stemmer for inflected language variants.
 function stemUniversal(word) {
   if (!word || word.length < 3) return word;
   const w = word.toLowerCase()
-    .replace(/ä/g, "a").replace(/ö/g, "o").replace(/ü/g, "u").replace(/ß/g, "ss")
-    .replace(/ą/g, "a").replace(/ć/g, "c").replace(/ę/g, "e").replace(/ł/g, "l")
-    .replace(/ń/g, "n").replace(/ó/g, "o").replace(/ś/g, "s").replace(/ź/g, "z").replace(/ż/g, "z");
+    .replace(/\u00e4/g, "a").replace(/\u00f6/g, "o").replace(/\u00fc/g, "u").replace(/\u00df/g, "ss")
+    .replace(/\u0105/g, "a").replace(/\u0107/g, "c").replace(/\u0119/g, "e").replace(/\u0142/g, "l")
+    .replace(/\u0144/g, "n").replace(/\u00f3/g, "o").replace(/\u015b/g, "s").replace(/\u017a/g, "z").replace(/\u017c/g, "z");
   return w.length >= 5 ? w.slice(0, 5) : w;
 }
 
-// Keep for backward compatibility
+// Keep for backward compatibility.
 function stemGerman(word) { return stemUniversal(word); }
-
-/* ═══════════════════════════════════════════
-   MAŁE KOMPONENTY
-   ═══════════════════════════════════════════ */
 
 const S = {
   font: "'DM Sans', sans-serif",
@@ -1037,9 +1062,7 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, g
       clearTimeout(timeoutId);
     }
     if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      const errMsg = errData?.error?.message || errData?.error?.status || `Błąd HTTP ${res.status}`;
-      throw new Error(errMsg);
+      throw new Error(await readApiError(res));
     }
     const data = await res.json();
     const text = data.choices?.[0]?.message?.content || "";
@@ -1927,10 +1950,10 @@ function ManualEditor({ listing, setListing }) {
 export default function App() {
   const [tab, setTab] = useState("generate");
   const [marketplace, setMarketplace] = useState("DE");
-  const [provider, setProvider] = useState("gemini");
-  const [apiKey, setApiKey] = useState(import.meta.env.VITE_GROQ_KEY || "");
-  const [geminiKey, setGeminiKey] = useState(import.meta.env.VITE_GEMINI_KEY || "");
-  const [model, setModel] = useState("gemini-3.1-flash-lite-preview");
+  const [provider, setProvider] = useState(getInitialProvider);
+  const [apiKey, setApiKey] = useState(() => readStoredValue("amz-groq-key", import.meta.env.VITE_GROQ_KEY || ""));
+  const [geminiKey, setGeminiKey] = useState(() => readStoredValue("amz-gemini-key", import.meta.env.VITE_GEMINI_KEY || ""));
+  const [model, setModel] = useState(getInitialModel);
   const [btg, setBtg] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [categoryLocked, setCategoryLocked] = useState(false);
@@ -1943,6 +1966,11 @@ export default function App() {
   const [savedListings, setSavedListings] = useState(() => {
     try { return JSON.parse(localStorage.getItem("amz-listing-history") || "[]"); } catch { return []; }
   });
+
+  useEffect(() => { writeStoredValue("amz-provider", provider); }, [provider]);
+  useEffect(() => { writeStoredValue("amz-groq-key", apiKey); }, [apiKey]);
+  useEffect(() => { writeStoredValue("amz-gemini-key", geminiKey); }, [geminiKey]);
+  useEffect(() => { writeStoredValue("amz-model", model); }, [model]);
 
   function saveToHistory(newListing, mp, hint) {
     const entry = {
