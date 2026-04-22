@@ -1317,6 +1317,106 @@ Double-check: Is every word in your JSON response written in ${mp.langEn}? If no
       .join("");
   }
 
+  function fitTitleMax(title) {
+    if (!title || title.length <= 190) return title || "";
+    let trimmed = title.slice(0, 190).trimEnd();
+    const lastDash = trimmed.lastIndexOf(" – ");
+    const lastComma = trimmed.lastIndexOf(", ");
+    const lastSpace = trimmed.lastIndexOf(" ");
+    const cutPoint = Math.max(lastDash > 160 ? lastDash : -1, lastComma > 165 ? lastComma : -1, lastSpace > 170 ? lastSpace : -1);
+    if (cutPoint > 170) trimmed = trimmed.slice(0, cutPoint).trimEnd();
+    return trimmed;
+  }
+
+  function deterministicTitleExpand(parsed, mp) {
+    let title = fitTitleMax(parsed.title || "");
+    if (title.length >= 170) return title;
+
+    const source = [
+      secondaryKeywords,
+      compatibilityTitle,
+      parsed.backendKeywords,
+      parsed.bullet1,
+      parsed.bullet2,
+      parsed.bullet3,
+      parsed.bullet4,
+      parsed.bullet5,
+    ].filter(Boolean).join(" ");
+
+    const stopWords = new Set(["and","or","the","for","with","from","that","this","und","oder","mit","für","von","der","die","das","ein","eine","einen","dem","den","des","zu","zur","zum","pour","avec","les","des","une","dans","sur","per","con","del","los","las","por","para","het","van","een","och","att","som","har","med","do","dla","oraz","bez","jest","jak","się"]);
+    const existing = new Set(title.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").split(/\s+/).filter(Boolean));
+    const words = source
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
+      .split(/\s+/)
+      .filter(w => w.length > 3 && !stopWords.has(w) && !existing.has(w));
+    const uniqueWords = [...new Set(words)];
+
+    const fallbackByLang = {
+      German: ["für tägliche pflege", "trockene hände", "normale sensible haut", "praktische handpflege"],
+      French: ["soin quotidien", "mains seches", "peau sensible", "format pratique"],
+      Italian: ["cura quotidiana", "mani secche", "pelle sensibile", "formato pratico"],
+      Spanish: ["cuidado diario", "manos secas", "piel sensible", "formato practico"],
+      Dutch: ["dagelijkse verzorging", "droge handen", "gevoelige huid", "praktisch formaat"],
+      Swedish: ["daglig vard", "torra hander", "kanslig hud", "praktiskt format"],
+      Polish: ["codzienna pielegnacja", "suche dlonie", "skora wrazliwa", "praktyczny format"],
+      English: ["daily care", "dry hands", "sensitive skin", "practical size"],
+    };
+
+    const candidates = [];
+    for (let i = 0; i < uniqueWords.length; i += 3) {
+      const phrase = uniqueWords.slice(i, i + 3).join(" ");
+      if (phrase.length >= 10) candidates.push(phrase);
+    }
+    candidates.push(...(fallbackByLang[mp.langEn] || fallbackByLang.English));
+
+    for (const phrase of candidates) {
+      const suffix = ` – ${phrase}`;
+      if (title.length + suffix.length <= 190) {
+        title += suffix;
+        if (title.length >= 170) break;
+      }
+    }
+
+    return fitTitleMax(title);
+  }
+
+  async function enforceFinalTitleLength(parsed, mp, systemMessage) {
+    if (!parsed.title) return parsed;
+    for (let attempt = 0; attempt < 2 && (parsed.title.length < 170 || parsed.title.length > 190); attempt++) {
+      setStatus("Dopasowywanie długości tytułu...");
+      const titleFixPrompt = `Your previous title has ${parsed.title.length} characters. This is invalid.
+
+You MUST return a title between 170 and 190 characters. Do not return a shorter title.
+
+Current listing:
+${JSON.stringify(parsed, null, 2)}
+
+Rules:
+- Keep the same product and target language (${mp.langEn}).
+- Preserve brand placement and the main keyword in the first 70 characters.
+- If the title is too short, append specific searchable phrases from backend keywords, use cases, skin/product type, pack/size, compatibility, or key benefits.
+- If the title is too long, shorten only the least important final phrase.
+
+Respond ONLY with the full corrected JSON.`;
+
+      try {
+        const fixed = await callAI([
+          systemMessage,
+          { role: "user", content: titleFixPrompt },
+        ]);
+        if (fixed?.title) parsed = { ...parsed, ...fixed };
+      } catch (e) {
+        console.error("Final title length fix failed:", e);
+        break;
+      }
+    }
+
+    if (parsed.title.length > 190) parsed.title = fitTitleMax(parsed.title);
+    if (parsed.title.length < 170) parsed.title = deterministicTitleExpand(parsed, mp);
+    return parsed;
+  }
+
   async function generate() {
     if (!productInfo.trim() && uploadedFiles.length === 0 && imageData.length === 0) {
       return setError("Opisz swój produkt lub wgraj załączniki z danymi (instrukcje, zdjęcia).");
@@ -1465,13 +1565,7 @@ Respond ONLY with the full corrected JSON in the same format.`;
 
       // Post-processing: enforce title hard maximum of 190 characters
       if (parsed.title && parsed.title.length > 190) {
-        let trimmed = parsed.title.slice(0, 190).trimEnd();
-        const lastDash = trimmed.lastIndexOf(" – ");
-        const lastComma = trimmed.lastIndexOf(", ");
-        const lastSpace = trimmed.lastIndexOf(" ");
-        const cutPoint = Math.max(lastDash > 160 ? lastDash : -1, lastComma > 165 ? lastComma : -1, lastSpace > 170 ? lastSpace : -1);
-        if (cutPoint > 170) trimmed = trimmed.slice(0, cutPoint).trimEnd();
-        parsed.title = trimmed;
+        parsed.title = fitTitleMax(parsed.title);
       }
 
       // Post-processing: enforce bullet points HARD LIMIT of 1000 chars
@@ -1743,6 +1837,8 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
           } catch { /* silently continue with what we have */ }
         }
       }
+
+      parsed = await enforceFinalTitleLength(parsed, mp, systemMessage);
 
       const newListing = {
         title: parsed.title || "",
