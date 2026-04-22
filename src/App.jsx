@@ -487,7 +487,7 @@ function DescriptionWithVisibleTags({ text }) {
 function ListingPreview({ listing }) {
   if (!listing) return null;
   const tLen = listing.title.length;
-  const titleScore = tLen > 190 ? Math.max(20, 100 - ((tLen - 190) * 3)) : tLen >= 170 ? 100 : tLen > 10 ? Math.round((tLen / 170) * 85) : 0;
+  const titleScore = tLen > 200 ? 20 : tLen >= 170 ? 100 : tLen > 10 ? Math.round((tLen / 170) * 85) : 0;
   const bulletScore = listing.bullets.filter(b => b.trim().length > 0).length * 20;
   const bBytes = (listing.backendKeywords || "").length;
   const backendScore = bBytes > 250 ? 20 : bBytes >= 230 ? 100 : Math.min(95, Math.round((bBytes / 230) * 100));
@@ -510,7 +510,7 @@ function ListingPreview({ listing }) {
         <div style={{ fontSize: 18, fontWeight: 600, color: "#0066c0", lineHeight: 1.4, fontFamily: S.font }}>
           {listing.title || <span style={{ color: "#3a3d45", fontStyle: "italic" }}>Wpisz tytuł powyżej...</span>}
         </div>
-        <div style={{ marginTop: 4 }}><CharBadge current={tLen} max={190} label="Znaki tytułu" /></div>
+        <div style={{ marginTop: 4 }}><CharBadge current={tLen} max={200} label="Znaki tytułu" /></div>
         <div style={{ fontSize: 11, color: S.dim, marginTop: 4 }}>
           Obcięcie na mobile (~70 znaków): <span style={{ color: S.accent }}>„{listing.title.slice(0, 70)}"</span>
         </div>
@@ -1189,7 +1189,7 @@ Do not invent new features that aren't in these reference bullets. Keep the same
 ═══════════════════════════════════════
 TITLE RULES (CRITICAL — follow exactly)
 ═══════════════════════════════════════
-- TARGET WINDOW: 170-190 characters. This is strict for every model, especially Groq. MINIMUM is 170 characters and MAXIMUM is 190 characters.
+- TARGET WINDOW: 170-190 characters. HARD LIMIT: 200 characters. MINIMUM is 170 characters — a shorter title wastes keyword opportunities.
 - The first 66-70 characters are the MOST VALUABLE — this is what shows on mobile (~70% of Amazon traffic). The customer MUST understand what the product is within these first characters.
 - STRUCTURE: ${brandValue ? `[${brandValue}] ` : "[Brand] "}[Primary Keyword = What It Is] – [Key Material/Feature] [Size] – [Secondary Feature/Keyword] – [Tertiary Keyword/Use Case] – [Model/Pack]
 - SINGLE IDENTITY FIRST: The first 66 chars must clearly state ONE product function. Never open with multiple functions (e.g. "heater and sterilizer") — this confuses the A9 algorithm about what the product IS.
@@ -1288,7 +1288,7 @@ Respond ONLY with valid JSON. No backticks, no preamble, no explanation:
 {"title":"...","bullet1":"...","bullet2":"...","bullet3":"...","bullet4":"...","bullet5":"...","description":"...","backendKeywords":"...","benefits":["benefit1","benefit2","benefit3","benefit4"]}
 
 FINAL CHECK before responding:
-- Is the title 170-190 characters? If under 170, ADD more keywords/features. If over 190, shorten it.
+- Is the title 170-200 characters? If under 170, ADD more keywords/features. Aim for 170-190 when possible, but 191-200 is acceptable.
 - Does the first 70 chars clearly identify the product?
 - Is the TOTAL of all 5 bullets between 950-1000 characters? HARD LIMIT: 1000 chars max. If over 1000, SHORTEN bullets. If under 950, EXPAND them. Count carefully.
 - Are backend keywords 230-250 characters? If under 230, you MUST add more words. Think harder about synonyms, related categories, use cases.
@@ -1318,12 +1318,12 @@ Double-check: Is every word in your JSON response written in ${mp.langEn}? If no
   }
 
   function fitTitleMax(title) {
-    if (!title || title.length <= 190) return title || "";
-    let trimmed = title.slice(0, 190).trimEnd();
+    if (!title || title.length <= 200) return title || "";
+    let trimmed = title.slice(0, 200).trimEnd();
     const lastDash = trimmed.lastIndexOf(" – ");
     const lastComma = trimmed.lastIndexOf(", ");
     const lastSpace = trimmed.lastIndexOf(" ");
-    const cutPoint = Math.max(lastDash > 160 ? lastDash : -1, lastComma > 165 ? lastComma : -1, lastSpace > 170 ? lastSpace : -1);
+    const cutPoint = Math.max(lastDash > 170 ? lastDash : -1, lastComma > 175 ? lastComma : -1, lastSpace > 180 ? lastSpace : -1);
     if (cutPoint > 170) trimmed = trimmed.slice(0, cutPoint).trimEnd();
     return trimmed;
   }
@@ -1372,7 +1372,7 @@ Double-check: Is every word in your JSON response written in ${mp.langEn}? If no
 
     for (const phrase of candidates) {
       const suffix = ` – ${phrase}`;
-      if (title.length + suffix.length <= 190) {
+      if (title.length + suffix.length <= 200) {
         title += suffix;
         if (title.length >= 170) break;
       }
@@ -1383,11 +1383,11 @@ Double-check: Is every word in your JSON response written in ${mp.langEn}? If no
 
   async function enforceFinalTitleLength(parsed, mp, systemMessage) {
     if (!parsed.title) return parsed;
-    for (let attempt = 0; attempt < 2 && (parsed.title.length < 170 || parsed.title.length > 190); attempt++) {
+    for (let attempt = 0; attempt < 2 && (parsed.title.length < 170 || parsed.title.length > 200); attempt++) {
       setStatus("Dopasowywanie długości tytułu...");
       const titleFixPrompt = `Your previous title has ${parsed.title.length} characters. This is invalid.
 
-You MUST return a title between 170 and 190 characters. Do not return a shorter title.
+You MUST return a title between 170 and 200 characters. Aim for 170-190, but 191-200 is acceptable. Do not return a shorter title.
 
 Current listing:
 ${JSON.stringify(parsed, null, 2)}
@@ -1412,7 +1412,7 @@ Respond ONLY with the full corrected JSON.`;
       }
     }
 
-    if (parsed.title.length > 190) parsed.title = fitTitleMax(parsed.title);
+    if (parsed.title.length > 200) parsed.title = fitTitleMax(parsed.title);
     if (parsed.title.length < 170) parsed.title = deterministicTitleExpand(parsed, mp);
     return parsed;
   }
@@ -1456,7 +1456,7 @@ Respond ONLY with the full corrected JSON.`;
       const backendBytes = (parsed.backendKeywords || "").length;
 
       const issues = [];
-      if (titleLen > 190) issues.push(`Title is ${titleLen} chars — this exceeds the 190-character target. You MUST shorten the title to fit within 170-190 characters. Remove less important descriptors or use more concise phrasing.`);
+      if (titleLen > 200) issues.push(`Title is ${titleLen} chars — this EXCEEDS the HARD LIMIT of 200 characters. You MUST shorten the title to fit within 170-200 characters. Remove less important descriptors or use more concise phrasing.`);
       if (titleLen < 170) issues.push(`Title is only ${titleLen} chars — MINIMUM is 170 characters. Expand to 170-190 chars by adding more keywords, features, or use cases.`);
       if (bulletsTotal > 1000) issues.push(`Bullets total is ${bulletsTotal} chars — this EXCEEDS the HARD LIMIT of 1000 characters. You MUST shorten the bullets to fit within 950-1000 characters total. Trim the longest bullets first while keeping key information.`);
       else if (bulletsTotal < 950) issues.push(`Bullets total only ${bulletsTotal} chars — this is TOO SHORT. Each bullet MUST be 190-200 characters. EXPAND every bullet with more specific details: exact dimensions, weight, materials, compatible models, certifications, use cases. Target: 950-1000 chars total.`);
@@ -1487,7 +1487,7 @@ Here is the current listing:
 ${JSON.stringify(parsed, null, 2)}
 
 Fix ALL issues above. Keep everything in ${mp.langEn}. Make the listing BIGGER and BETTER.
-For the title: fit the title into 170-190 chars. Add keywords if too short; shorten concise sections if too long.
+For the title: fit the title into 170-200 chars. Aim for 170-190 when possible. Add keywords if too short; shorten only if over 200.
 For bullets: the TOTAL of all 5 bullets MUST be between 950-1000 characters. HARD LIMIT: 1000 max. Each bullet should be 180-200 chars. If over 1000, shorten the longest bullets. If under 950, add details.
 For backend keywords: brainstorm ALL possible synonyms, alternate names, related categories, compatible products, use cases — pack it to 230-250 characters. Remember: no words already in title or bullets, no brand names, no stop words, NO DUPLICATE WORDS.
 For benefits: EXACTLY 4 benefits, each maximum 6 words. They must be short, punchy selling points highlighting product advantages. Make them benefit-focused, not feature-focused.
@@ -1542,14 +1542,14 @@ Respond ONLY with valid JSON in ${mp.langEn}:
         }
       }
 
-      if (parsed.title && (parsed.title.length < 170 || parsed.title.length > 190)) {
+      if (parsed.title && (parsed.title.length < 170 || parsed.title.length > 200)) {
         setStatus("Dopasowywanie długości tytułu...");
-        const titleFixPrompt = `The title length is ${parsed.title.length} characters, but it MUST be between 170 and 190 characters.
+        const titleFixPrompt = `The title length is ${parsed.title.length} characters, but it MUST be between 170 and 200 characters. Aim for 170-190 when possible.
 
 Current listing:
 ${JSON.stringify(parsed, null, 2)}
 
-Rewrite ONLY as much as needed to make the title 170-190 characters. Keep the same language (${mp.langEn}), product identity, brand placement, primary keyword in the first 70 characters, and all other fields.
+Rewrite ONLY as much as needed to make the title 170-200 characters. Keep the same language (${mp.langEn}), product identity, brand placement, primary keyword in the first 70 characters, and all other fields.
 
 Respond ONLY with the full corrected JSON in the same format.`;
 
@@ -1563,8 +1563,8 @@ Respond ONLY with the full corrected JSON in the same format.`;
         }
       }
 
-      // Post-processing: enforce title hard maximum of 190 characters
-      if (parsed.title && parsed.title.length > 190) {
+      // Post-processing: enforce title hard maximum of 200 characters
+      if (parsed.title && parsed.title.length > 200) {
         parsed.title = fitTitleMax(parsed.title);
       }
 
