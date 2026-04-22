@@ -125,7 +125,7 @@ function writeStoredValue(key, value) {
 }
 
 function getInitialProvider() {
-  return readStoredValue("amz-provider", import.meta.env.VITE_GEMINI_KEY ? "gemini" : (import.meta.env.VITE_GROQ_KEY ? "groq" : "gemini"));
+  return readStoredValue("amz-provider", "gemini");
 }
 
 function getInitialModel() {
@@ -820,8 +820,7 @@ function HistoryPanel({ entries, onLoad, onDelete }) {
    SETTINGS PANEL
    ═══════════════════════════════════════════ */
 
-function SettingsPanel({ provider, setProvider, apiKey, setApiKey, geminiKey, setGeminiKey, model, setModel }) {
-  const [showKey, setShowKey] = useState(false);
+function SettingsPanel({ provider, setProvider, model, setModel }) {
   const models = provider === "gemini" ? GEMINI_MODELS : GROQ_MODELS;
 
   function switchProvider(p) {
@@ -870,21 +869,13 @@ function SettingsPanel({ provider, setProvider, apiKey, setApiKey, geminiKey, se
       {/* API Key */}
       <div style={{ marginBottom: 16 }}>
         <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#c4c8d0", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-          {provider === "gemini" ? "Klucz API Google Gemini" : "Klucz API Groq"}
+          Klucz API
         </label>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input value={provider === "gemini" ? geminiKey : apiKey}
-            onChange={e => provider === "gemini" ? setGeminiKey(e.target.value) : setApiKey(e.target.value)}
-            type={showKey ? "text" : "password"}
-            placeholder={provider === "gemini" ? "AIza..." : "gsk_..."}
-            style={{
-              flex: 1, padding: "12px 14px", background: S.input, border: `1px solid ${S.border}`,
-              borderRadius: 8, color: S.text, fontSize: 14, fontFamily: S.mono, outline: "none", boxSizing: "border-box",
-            }} />
-          <button onClick={() => setShowKey(!showKey)} style={{
-            padding: "0 14px", background: S.input, border: `1px solid ${S.border}`, borderRadius: 8,
-            color: S.muted, cursor: "pointer", fontSize: 16,
-          }}>{showKey ? "🙈" : "👁"}</button>
+        <div style={{
+          padding: "12px 14px", background: S.input, border: `1px solid ${S.border}`,
+          borderRadius: 8, color: S.muted, fontSize: 13, lineHeight: 1.5,
+        }}>
+          Klucze są używane po stronie Cloudflare Function z sekretów GEMINI_API_KEY i GROQ_API_KEY.
         </div>
         <div style={{ fontSize: 11, color: S.dim, marginTop: 4 }}>
           {provider === "gemini"
@@ -922,7 +913,7 @@ function SettingsPanel({ provider, setProvider, apiKey, setApiKey, geminiKey, se
    AI GENERATE PANEL
    ═══════════════════════════════════════════ */
 
-function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, geminiKey, model, btg, selectedCategory, setSelectedCategory, categoryAttrs, setCategoryAttrs, categoryLocked, setCategoryLocked, secondaryKeywords, setSecondaryKeywords, csvKeywords, setCsvKeywords, onSaveListing }) {
+function AIGeneratePanel({ listing, setListing, marketplace, provider, model, btg, selectedCategory, setSelectedCategory, categoryAttrs, setCategoryAttrs, categoryLocked, setCategoryLocked, secondaryKeywords, setSecondaryKeywords, csvKeywords, setCsvKeywords, onSaveListing }) {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [productInfo, setProductInfo] = useState("");
@@ -1025,13 +1016,12 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, g
   }
 
   async function callAI(messages) {
-    let url, headers, body;
+    let body;
 
     if (provider === "gemini") {
-      url = `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`;
-      headers = { "Content-Type": "application/json", "Authorization": `Bearer ${geminiKey}` };
       const isGemma = model.startsWith("gemma");
       body = {
+        provider,
         model: model,
         messages: messages,
         temperature: 0.7,
@@ -1039,9 +1029,8 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, g
         ...(isGemma ? {} : { response_format: { type: "json_object" } }),
       };
     } else {
-      url = "https://api.groq.com/openai/v1/chat/completions";
-      headers = { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` };
       body = {
+        provider,
         model: model,
         messages: messages,
         temperature: 0.7,
@@ -1054,7 +1043,12 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, apiKey, g
     const timeoutId = setTimeout(() => controller.abort(), 90_000); // 90s timeout
     let res;
     try {
-      res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal: controller.signal });
+      res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
     } catch (err) {
       if (err.name === "AbortError") throw new Error("Przekroczono limit czasu (90s). Sprawdź połączenie lub spróbuj z krótszym opisem produktu.");
       throw err;
@@ -1280,8 +1274,6 @@ Double-check: Is every word in your JSON response written in ${mp.langEn}? If no
     if (!productInfo.trim() && uploadedFiles.length === 0 && imageData.length === 0) {
       return setError("Opisz swój produkt lub wgraj załączniki z danymi (instrukcje, zdjęcia).");
     }
-    const activeKey = provider === "gemini" ? geminiKey : apiKey;
-    if (!activeKey.trim()) return setError(`Wpisz klucz API ${provider === "gemini" ? "Gemini" : "Groq"} w zakładce ⚙️ Ustawienia.`);
     if (!marketplace) return setError("Wybierz marketplace.");
     setError("");
     setLoading(true);
@@ -1619,16 +1611,13 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
             const padCtrl = new AbortController();
             const padTimeout = setTimeout(() => padCtrl.abort(), 30_000); // 30s for pad call
             const padRes = await fetch(
-              provider === "gemini"
-                ? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
-                : "https://api.groq.com/openai/v1/chat/completions",
+              "/api/ai",
               {
                 method: "POST",
                 signal: padCtrl.signal,
-                headers: provider === "gemini"
-                  ? { "Content-Type": "application/json", "Authorization": `Bearer ${geminiKey}` }
-                  : { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
+                  provider,
                   model: model,
                   messages: [{ role: "user", content: padPrompt }],
                   temperature: 0.9,
@@ -1951,8 +1940,6 @@ export default function App() {
   const [tab, setTab] = useState("generate");
   const [marketplace, setMarketplace] = useState("DE");
   const [provider, setProvider] = useState(getInitialProvider);
-  const [apiKey, setApiKey] = useState(() => readStoredValue("amz-groq-key", import.meta.env.VITE_GROQ_KEY || ""));
-  const [geminiKey, setGeminiKey] = useState(() => readStoredValue("amz-gemini-key", import.meta.env.VITE_GEMINI_KEY || ""));
   const [model, setModel] = useState(getInitialModel);
   const [btg, setBtg] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -1968,8 +1955,6 @@ export default function App() {
   });
 
   useEffect(() => { writeStoredValue("amz-provider", provider); }, [provider]);
-  useEffect(() => { writeStoredValue("amz-groq-key", apiKey); }, [apiKey]);
-  useEffect(() => { writeStoredValue("amz-gemini-key", geminiKey); }, [geminiKey]);
   useEffect(() => { writeStoredValue("amz-model", model); }, [model]);
 
   function saveToHistory(newListing, mp, hint) {
@@ -2073,7 +2058,7 @@ export default function App() {
           {/* Generate tab — always mounted to preserve form state, hidden when inactive */}
           <div style={{ display: tab === "generate" ? "" : "none" }}>
             <AIGeneratePanel listing={listing} setListing={setListing} marketplace={marketplace}
-              provider={provider} apiKey={apiKey} geminiKey={geminiKey} model={model} btg={btg} selectedCategory={selectedCategory}
+                provider={provider} model={model} btg={btg} selectedCategory={selectedCategory}
               setSelectedCategory={setSelectedCategory} categoryAttrs={categoryAttrs} setCategoryAttrs={setCategoryAttrs}
               categoryLocked={categoryLocked} setCategoryLocked={setCategoryLocked}
               secondaryKeywords={secondaryKeywords} setSecondaryKeywords={setSecondaryKeywords}
@@ -2086,7 +2071,7 @@ export default function App() {
           {tab === "manual" && <ManualEditor listing={listing} setListing={setListing} />}
           {tab === "preview" && <ListingPreview listing={listing} />}
           {tab === "history" && <HistoryPanel entries={savedListings} onLoad={loadFromHistory} onDelete={deleteFromHistory} />}
-          {tab === "settings" && <SettingsPanel provider={provider} setProvider={setProvider} apiKey={apiKey} setApiKey={setApiKey} geminiKey={geminiKey} setGeminiKey={setGeminiKey} model={model} setModel={setModel} />}
+          {tab === "settings" && <SettingsPanel provider={provider} setProvider={setProvider} model={model} setModel={setModel} />}
         </div>
 
         {/* TIPS */}

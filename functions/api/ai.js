@@ -16,9 +16,7 @@ export async function onRequestPost(context) {
 
     if (provider === "gemini") {
       apiKey = env.GEMINI_API_KEY;
-      if (!apiKey) {
-        return json({ error: { message: "Missing GEMINI_API_KEY secret" } }, 500);
-      }
+      if (!apiKey) return json({ error: { message: "Missing GEMINI_API_KEY secret" } }, 500);
 
       url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
       body = {
@@ -26,12 +24,11 @@ export async function onRequestPost(context) {
         messages,
         temperature,
         max_tokens,
+        ...(response_format ? { response_format } : {}),
       };
     } else if (provider === "groq") {
       apiKey = env.GROQ_API_KEY;
-      if (!apiKey) {
-        return json({ error: { message: "Missing GROQ_API_KEY secret" } }, 500);
-      }
+      if (!apiKey) return json({ error: { message: "Missing GROQ_API_KEY secret" } }, 500);
 
       url = "https://api.groq.com/openai/v1/chat/completions";
       body = {
@@ -55,7 +52,6 @@ export async function onRequestPost(context) {
     });
 
     const text = await upstream.text();
-
     return new Response(text, {
       status: upstream.status,
       headers: {
