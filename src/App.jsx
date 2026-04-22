@@ -26,6 +26,15 @@ const GEMINI_MODELS = [
   { id: "gemma-3-27b-it", name: "Gemma 3 27B", desc: "14 400 req/dzień — open source, bez zdjęć" },
 ];
 
+function getProviderLabel(provider) {
+  return provider === "gemini" ? "Gemini" : "Groq";
+}
+
+function getModelDisplayName(provider, modelId) {
+  const models = provider === "gemini" ? GEMINI_MODELS : GROQ_MODELS;
+  return models.find(m => m.id === modelId)?.name || modelId || "";
+}
+
 const BULLET_THEMES = [
   "Główna funkcja / kluczowa korzyść",
   "Jakość / materiały / trwałość",
@@ -2222,7 +2231,33 @@ export default function App() {
               WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
             }}>Optymalizator Listingów Amazon</h1>
             <div style={{ fontSize: 12, color: S.dim, marginTop: 2 }}>
-              Optymalizacja rynków EU — Groq AI · A9/A10 · Rufus & Cosmo · Browse Tree Guide
+              Optymalizacja rynków EU — AI proxy · A9/A10 · Rufus & Cosmo · Browse Tree Guide
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10, alignItems: "center" }}>
+              <span style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                padding: "5px 10px", borderRadius: 999,
+                border: `1px solid ${S.border}`, background: S.card2,
+                fontSize: 11, fontWeight: 700, color: S.muted,
+              }}>
+                Aktualnie
+              </span>
+              <span style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                padding: "5px 10px", borderRadius: 999,
+                border: `1px solid ${S.accent}66`, background: "#ff990015",
+                fontSize: 11, fontWeight: 700, color: S.accent,
+              }}>
+                {getProviderLabel(provider)}
+              </span>
+              <span style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                padding: "5px 10px", borderRadius: 999,
+                border: `1px solid ${S.border}`, background: S.input,
+                fontSize: 11, fontWeight: 700, color: S.text,
+              }}>
+                {getModelDisplayName(provider, model)}
+              </span>
             </div>
           </div>
         </div>
