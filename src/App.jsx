@@ -147,6 +147,18 @@ async function readApiError(res) {
   }
 }
 
+function isGeminiLimitError(message) {
+  const msg = String(message || "").toLowerCase();
+  return msg.includes("429")
+    || msg.includes("quota")
+    || msg.includes("resource_exhausted")
+    || msg.includes("rate limit")
+    || msg.includes("token")
+    || msg.includes("limit")
+    || msg.includes("exceeded")
+    || msg.includes("exhausted");
+}
+
 // Universal stemmer for inflected language variants.
 function stemUniversal(word) {
   if (!word || word.length < 3) return word;
@@ -447,6 +459,26 @@ function SectionHead({ children, copyText, copyLabel }) {
   );
 }
 
+function DescriptionWithVisibleTags({ text }) {
+  const parts = String(text || "").split(/(<\/?p>)/gi);
+  return (
+    <div style={{ fontSize: 13, color: "#c4c8d0", lineHeight: 1.6, fontFamily: S.font, whiteSpace: "pre-wrap" }}>
+      {parts.map((part, idx) => {
+        if (/^<\/?p>$/i.test(part)) {
+          const isClosing = /^<\/p>$/i.test(part);
+          return (
+            <span key={idx}>
+              <span style={{ color: S.accent, fontFamily: S.mono }}>{part}</span>
+              {isClosing && <><br /><br /></>}
+            </span>
+          );
+        }
+        return <span key={idx}>{part}</span>;
+      })}
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════
    LISTING PREVIEW + SCORE + EXCEL INJECTOR
    ═══════════════════════════════════════════ */
@@ -455,10 +487,10 @@ function SectionHead({ children, copyText, copyLabel }) {
 function ListingPreview({ listing }) {
   if (!listing) return null;
   const tLen = listing.title.length;
-  const titleScore = tLen > 200 ? 20 : tLen >= 170 ? 100 : tLen > 10 ? Math.round((tLen / 170) * 85) : 0;
+  const titleScore = tLen > 190 ? Math.max(20, 100 - ((tLen - 190) * 3)) : tLen >= 170 ? 100 : tLen > 10 ? Math.round((tLen / 170) * 85) : 0;
   const bulletScore = listing.bullets.filter(b => b.trim().length > 0).length * 20;
   const bBytes = (listing.backendKeywords || "").length;
-  const backendScore = Math.min(100, Math.round((bBytes / 250) * 100));
+  const backendScore = bBytes > 250 ? 20 : bBytes >= 230 ? 100 : Math.min(95, Math.round((bBytes / 230) * 100));
   const overall = Math.round((titleScore + bulletScore + backendScore) / 3);
 
   return (
@@ -478,7 +510,7 @@ function ListingPreview({ listing }) {
         <div style={{ fontSize: 18, fontWeight: 600, color: "#0066c0", lineHeight: 1.4, fontFamily: S.font }}>
           {listing.title || <span style={{ color: "#3a3d45", fontStyle: "italic" }}>Wpisz tytuł powyżej...</span>}
         </div>
-        <div style={{ marginTop: 4 }}><CharBadge current={tLen} max={200} label="Znaki tytułu" /></div>
+        <div style={{ marginTop: 4 }}><CharBadge current={tLen} max={190} label="Znaki tytułu" /></div>
         <div style={{ fontSize: 11, color: S.dim, marginTop: 4 }}>
           Obcięcie na mobile (~70 znaków): <span style={{ color: S.accent }}>„{listing.title.slice(0, 70)}"</span>
         </div>
@@ -503,7 +535,7 @@ function ListingPreview({ listing }) {
       {listing.description && (
         <div style={{ marginBottom: 20 }}>
           <SectionHead copyText={listing.description} copyLabel="opis">Opis produktu</SectionHead>
-          <div style={{ fontSize: 13, color: "#c4c8d0", lineHeight: 1.6, fontFamily: S.font }} dangerouslySetInnerHTML={{ __html: (listing.description || "").replace(/</g, "&lt;").replace(/&lt;br\s*\/?>/gi, "<br>").replace(/&lt;\/p>/gi, "</p>").replace(/&lt;p>/gi, "<p>") }} />
+          <DescriptionWithVisibleTags text={listing.description} />
         </div>
       )}
 
@@ -913,7 +945,7 @@ function SettingsPanel({ provider, setProvider, model, setModel }) {
    AI GENERATE PANEL
    ═══════════════════════════════════════════ */
 
-function AIGeneratePanel({ listing, setListing, marketplace, provider, model, btg, selectedCategory, setSelectedCategory, categoryAttrs, setCategoryAttrs, categoryLocked, setCategoryLocked, secondaryKeywords, setSecondaryKeywords, csvKeywords, setCsvKeywords, onSaveListing }) {
+function AIGeneratePanel({ listing, setListing, marketplace, provider, setProvider, model, setModel, btg, selectedCategory, setSelectedCategory, categoryAttrs, setCategoryAttrs, categoryLocked, setCategoryLocked, secondaryKeywords, setSecondaryKeywords, csvKeywords, setCsvKeywords, onSaveListing }) {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [productInfo, setProductInfo] = useState("");
@@ -927,6 +959,11 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, model, bt
   const [error, setError] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [imageData, setImageData] = useState([]);
+  const activeProviderRef = useRef(provider);
+  const activeModelRef = useRef(model);
+
+  useEffect(() => { activeProviderRef.current = provider; }, [provider]);
+  useEffect(() => { activeModelRef.current = model; }, [model]);
 
   // CSV parser for Helium 10
   function handleCsvUpload(e) {
@@ -1015,14 +1052,14 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, model, bt
     setUploadedFiles(prev => prev.filter((_, i) => i !== idx));
   }
 
-  async function callAI(messages) {
+  async function callAI(messages, providerOverride = activeProviderRef.current, modelOverride = activeModelRef.current, allowFallback = true) {
     let body;
 
-    if (provider === "gemini") {
-      const isGemma = model.startsWith("gemma");
+    if (providerOverride === "gemini") {
+      const isGemma = modelOverride.startsWith("gemma");
       body = {
-        provider,
-        model: model,
+        provider: providerOverride,
+        model: modelOverride,
         messages: messages,
         temperature: 0.7,
         max_tokens: 8192,
@@ -1030,8 +1067,8 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, model, bt
       };
     } else {
       body = {
-        provider,
-        model: model,
+        provider: providerOverride,
+        model: modelOverride,
         messages: messages,
         temperature: 0.7,
         max_tokens: 3000,
@@ -1056,7 +1093,17 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, model, bt
       clearTimeout(timeoutId);
     }
     if (!res.ok) {
-      throw new Error(await readApiError(res));
+      const errMsg = await readApiError(res);
+      if (allowFallback && providerOverride === "gemini" && isGeminiLimitError(errMsg)) {
+        const fallbackModel = "meta-llama/llama-4-scout-17b-16e-instruct";
+        setStatus("Limit Gemini wyczerpany — przełączam automatycznie na Groq...");
+        activeProviderRef.current = "groq";
+        activeModelRef.current = fallbackModel;
+        setProvider("groq");
+        setModel(fallbackModel);
+        return callAI(messages, "groq", fallbackModel, false);
+      }
+      throw new Error(errMsg);
     }
     const data = await res.json();
     const text = data.choices?.[0]?.message?.content || "";
@@ -1142,7 +1189,7 @@ Do not invent new features that aren't in these reference bullets. Keep the same
 ═══════════════════════════════════════
 TITLE RULES (CRITICAL — follow exactly)
 ═══════════════════════════════════════
-- HARD LIMIT: Max 200 characters. AIM FOR 170-200 characters. MINIMUM is 170 characters — a shorter title wastes keyword opportunities.
+- TARGET WINDOW: 170-190 characters. This is strict for every model, especially Groq. MINIMUM is 170 characters and MAXIMUM is 190 characters.
 - The first 66-70 characters are the MOST VALUABLE — this is what shows on mobile (~70% of Amazon traffic). The customer MUST understand what the product is within these first characters.
 - STRUCTURE: ${brandValue ? `[${brandValue}] ` : "[Brand] "}[Primary Keyword = What It Is] – [Key Material/Feature] [Size] – [Secondary Feature/Keyword] – [Tertiary Keyword/Use Case] – [Model/Pack]
 - SINGLE IDENTITY FIRST: The first 66 chars must clearly state ONE product function. Never open with multiple functions (e.g. "heater and sterilizer") — this confuses the A9 algorithm about what the product IS.
@@ -1197,7 +1244,7 @@ Do NOT invent new paragraphs, change the logical progression, or remove details.
 BACKEND KEYWORDS RULES (CRITICAL)
 ═══════════════════════════════════════
 - HARD LIMIT: Max 250 characters (string length, not bytes).
-- TARGET: 220-250 characters. This is CRITICAL. You MUST reach at least 220 characters. Every unused character is a MISSED indexing opportunity.
+- TARGET: 230-250 characters. This is CRITICAL. You MUST reach at least 230 characters. Every unused character is a MISSED indexing opportunity.
 - All lowercase, separated by spaces only. No commas, no punctuation.
 - ABSOLUTELY NO DUPLICATE WORDS. Every single word must appear EXACTLY ONCE. Before finalizing, scan your backend keywords and remove any word that appears more than once.
 - MUST NOT repeat ANY word already in the title, bullet points, or description. These are COMPLEMENTARY terms only.
@@ -1226,7 +1273,7 @@ BENEFITS (4 SHORT SELLING POINTS)
 LANGUAGE-SPECIFIC NOTES
 ═══════════════════════════════════════
 - DE: German compound nouns are valuable keywords (e.g., "Küchenmesser", "Schneidebrett"). Use them. Formal tone.
-- FR (FR/BE): Natural French with proper accents. Accented chars cost 2 bytes in backend. This listing serves both France and Belgium (French-speaking).
+- FR (FR/BE): Natural French with proper accents. This listing serves both France and Belgium (French-speaking).
 - IT: Italian descriptions can be more expressive. Use appropriate articles.
 - ES: Use neutral Spanish for Spain (not Latin American).
 - NL: Keep straightforward, practical Dutch.
@@ -1241,10 +1288,10 @@ Respond ONLY with valid JSON. No backticks, no preamble, no explanation:
 {"title":"...","bullet1":"...","bullet2":"...","bullet3":"...","bullet4":"...","bullet5":"...","description":"...","backendKeywords":"...","benefits":["benefit1","benefit2","benefit3","benefit4"]}
 
 FINAL CHECK before responding:
-- Is the title 170-200 characters? If under 170, ADD more keywords/features.
+- Is the title 170-190 characters? If under 170, ADD more keywords/features. If over 190, shorten it.
 - Does the first 70 chars clearly identify the product?
 - Is the TOTAL of all 5 bullets between 950-1000 characters? HARD LIMIT: 1000 chars max. If over 1000, SHORTEN bullets. If under 950, EXPAND them. Count carefully.
-- Are backend keywords 220-250 characters? If under 220, you MUST add more words. Think harder about synonyms, related categories, use cases.
+- Are backend keywords 230-250 characters? If under 230, you MUST add more words. Think harder about synonyms, related categories, use cases.
 - Does bullet #1 match the title's primary product identity?
 - Are backend keywords truly COMPLEMENTARY (no words from title/bullets)?
 - Do backend keywords contain ANY duplicate words? If yes, REMOVE duplicates and replace with new unique words.
@@ -1309,11 +1356,11 @@ Double-check: Is every word in your JSON response written in ${mp.langEn}? If no
       const backendBytes = (parsed.backendKeywords || "").length;
 
       const issues = [];
-      if (titleLen > 200) issues.push(`Title is ${titleLen} chars — this EXCEEDS the HARD LIMIT of 200 characters. You MUST shorten the title to fit within 170-200 characters. Remove less important descriptors or use more concise phrasing.`);
-      if (titleLen < 170) issues.push(`Title is only ${titleLen} chars — MINIMUM is 170 characters. Expand to 170-200 chars by adding more keywords, features, or use cases.`);
+      if (titleLen > 190) issues.push(`Title is ${titleLen} chars — this exceeds the 190-character target. You MUST shorten the title to fit within 170-190 characters. Remove less important descriptors or use more concise phrasing.`);
+      if (titleLen < 170) issues.push(`Title is only ${titleLen} chars — MINIMUM is 170 characters. Expand to 170-190 chars by adding more keywords, features, or use cases.`);
       if (bulletsTotal > 1000) issues.push(`Bullets total is ${bulletsTotal} chars — this EXCEEDS the HARD LIMIT of 1000 characters. You MUST shorten the bullets to fit within 950-1000 characters total. Trim the longest bullets first while keeping key information.`);
       else if (bulletsTotal < 950) issues.push(`Bullets total only ${bulletsTotal} chars — this is TOO SHORT. Each bullet MUST be 190-200 characters. EXPAND every bullet with more specific details: exact dimensions, weight, materials, compatible models, certifications, use cases. Target: 950-1000 chars total.`);
-      if (backendBytes < 215) issues.push(`Backend keywords only ${backendBytes}/250 characters — you MUST add more words to reach 220-250 characters. Brainstorm: synonyms, related categories, compatible products, use cases, materials, locations, actions. NO duplicates, NO words from title/bullets.`);
+      if (backendBytes < 230) issues.push(`Backend keywords only ${backendBytes}/250 characters — you MUST add more words to reach 230-250 characters. Brainstorm: synonyms, related categories, compatible products, use cases, materials, locations, actions. NO duplicates, NO words from title/bullets.`);
 
       // Validate benefits
       const benefitCount = (parsed.benefits && Array.isArray(parsed.benefits)) ? parsed.benefits.length : 0;
@@ -1340,9 +1387,9 @@ Here is the current listing:
 ${JSON.stringify(parsed, null, 2)}
 
 Fix ALL issues above. Keep everything in ${mp.langEn}. Make the listing BIGGER and BETTER.
-For the title: add secondary keywords, features, or use cases to reach 170-200 chars.
+For the title: fit the title into 170-190 chars. Add keywords if too short; shorten concise sections if too long.
 For bullets: the TOTAL of all 5 bullets MUST be between 950-1000 characters. HARD LIMIT: 1000 max. Each bullet should be 180-200 chars. If over 1000, shorten the longest bullets. If under 950, add details.
-For backend keywords: brainstorm ALL possible synonyms, alternate names, related categories, compatible products, use cases — pack it to 220-250 characters. Remember: no words already in title or bullets, no brand names, no stop words, NO DUPLICATE WORDS.
+For backend keywords: brainstorm ALL possible synonyms, alternate names, related categories, compatible products, use cases — pack it to 230-250 characters. Remember: no words already in title or bullets, no brand names, no stop words, NO DUPLICATE WORDS.
 For benefits: EXACTLY 4 benefits, each maximum 6 words. They must be short, punchy selling points highlighting product advantages. Make them benefit-focused, not feature-focused.
 CRITICAL - Forbidden Words: REMOVE any Amazon-forbidden words like: best seller, best price, approved, guaranteed, top rated, limited time, sale, cure, heal, sanitize, etc. Replace with alternative phrasing that conveys the same benefit WITHOUT using forbidden words. Examples: instead of "best seller" use "bestselling" or "customer favorite"; instead of "guaranteed" use "backed by warranty" or "reliable".
 
@@ -1395,9 +1442,36 @@ Respond ONLY with valid JSON in ${mp.langEn}:
         }
       }
 
-      // Post-processing: enforce title HARD LIMIT of 200 characters
-      if (parsed.title && parsed.title.length > 200) {
-        parsed.title = parsed.title.slice(0, 200).trimEnd();
+      if (parsed.title && (parsed.title.length < 170 || parsed.title.length > 190)) {
+        setStatus("Dopasowywanie długości tytułu...");
+        const titleFixPrompt = `The title length is ${parsed.title.length} characters, but it MUST be between 170 and 190 characters.
+
+Current listing:
+${JSON.stringify(parsed, null, 2)}
+
+Rewrite ONLY as much as needed to make the title 170-190 characters. Keep the same language (${mp.langEn}), product identity, brand placement, primary keyword in the first 70 characters, and all other fields.
+
+Respond ONLY with the full corrected JSON in the same format.`;
+
+        try {
+          parsed = await callAI([
+            systemMessage,
+            { role: "user", content: titleFixPrompt },
+          ]);
+        } catch (e) {
+          console.error("Title length fix failed:", e);
+        }
+      }
+
+      // Post-processing: enforce title hard maximum of 190 characters
+      if (parsed.title && parsed.title.length > 190) {
+        let trimmed = parsed.title.slice(0, 190).trimEnd();
+        const lastDash = trimmed.lastIndexOf(" – ");
+        const lastComma = trimmed.lastIndexOf(", ");
+        const lastSpace = trimmed.lastIndexOf(" ");
+        const cutPoint = Math.max(lastDash > 160 ? lastDash : -1, lastComma > 165 ? lastComma : -1, lastSpace > 170 ? lastSpace : -1);
+        if (cutPoint > 170) trimmed = trimmed.slice(0, cutPoint).trimEnd();
+        parsed.title = trimmed;
       }
 
       // Post-processing: enforce bullet points HARD LIMIT of 1000 chars
@@ -1588,11 +1662,11 @@ Respond ONLY with a JSON array of 3 strings: ["sentence 1.", "sentence 2.", "sen
 
         parsed.backendKeywords = result.join(" ");
 
-        // 5. If under 215 characters after cleanup, ask AI for more complementary keywords
-        const finalBytes = parsed.backendKeywords.length;
-        if (finalBytes < 215) {
+        // 5. If under 230 characters after cleanup, ask AI for more complementary keywords
+        const finalChars = parsed.backendKeywords.length;
+        if (finalChars < 230) {
           setStatus("Dobijanie backend keywords...");
-          const remainingChars = 248 - finalBytes;
+          const remainingChars = 248 - finalChars;
           const padPrompt = `I need MORE backend search terms for an Amazon ${mp.langEn} listing.
 
 Product: ${parsed.title}
@@ -1603,28 +1677,51 @@ Generate ONLY a space-separated list of unique lowercase ${mp.langEn} words. The
 - Synonyms, related product categories, compatible accessories, use cases, materials, locations, actions
 - NOT in the forbidden list above
 - No stop words, no brand names, no punctuation
-- Total must fit in approximately ${remainingChars} characters
+- Total must fit in approximately ${remainingChars} characters so final backend keywords reach 230-250 characters
 
 Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-separated lowercase words.`;
 
           try {
             const padCtrl = new AbortController();
             const padTimeout = setTimeout(() => padCtrl.abort(), 30_000); // 30s for pad call
-            const padRes = await fetch(
+            let padRes = await fetch(
               "/api/ai",
               {
                 method: "POST",
                 signal: padCtrl.signal,
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  provider,
-                  model: model,
+                  provider: activeProviderRef.current,
+                  model: activeModelRef.current,
                   messages: [{ role: "user", content: padPrompt }],
                   temperature: 0.9,
                   max_tokens: 500,
                 }),
               }
             ).finally(() => clearTimeout(padTimeout));
+            if (!padRes.ok) {
+              const padErr = await readApiError(padRes);
+              if (activeProviderRef.current === "gemini" && isGeminiLimitError(padErr)) {
+                const fallbackModel = "meta-llama/llama-4-scout-17b-16e-instruct";
+                setStatus("Limit Gemini wyczerpany — przełączam automatycznie na Groq...");
+                activeProviderRef.current = "groq";
+                activeModelRef.current = fallbackModel;
+                setProvider("groq");
+                setModel(fallbackModel);
+                padRes = await fetch("/api/ai", {
+                  method: "POST",
+                  signal: padCtrl.signal,
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    provider: "groq",
+                    model: fallbackModel,
+                    messages: [{ role: "user", content: padPrompt }],
+                    temperature: 0.9,
+                    max_tokens: 500,
+                  }),
+                });
+              }
+            }
             if (padRes.ok) {
               const padData = await padRes.json();
               const padText = (padData.choices?.[0]?.message?.content || "").toLowerCase().replace(/[^a-ząćęłńóśźżäöüßéèêëàâçîïôùûñáíóúě\s]/g, " ");
@@ -2058,7 +2155,7 @@ export default function App() {
           {/* Generate tab — always mounted to preserve form state, hidden when inactive */}
           <div style={{ display: tab === "generate" ? "" : "none" }}>
             <AIGeneratePanel listing={listing} setListing={setListing} marketplace={marketplace}
-                provider={provider} model={model} btg={btg} selectedCategory={selectedCategory}
+                provider={provider} setProvider={setProvider} model={model} setModel={setModel} btg={btg} selectedCategory={selectedCategory}
               setSelectedCategory={setSelectedCategory} categoryAttrs={categoryAttrs} setCategoryAttrs={setCategoryAttrs}
               categoryLocked={categoryLocked} setCategoryLocked={setCategoryLocked}
               secondaryKeywords={secondaryKeywords} setSecondaryKeywords={setSecondaryKeywords}
@@ -2081,7 +2178,7 @@ export default function App() {
         }}>
           <span style={{ fontSize: 20 }}>💡</span>
           <div style={{ fontSize: 12, color: S.dim, lineHeight: 1.6 }}>
-            <strong style={{ color: S.muted }}>Wskazówki optymalizacyjne:</strong> Główne słowo kluczowe musi pojawić się w pierwszych 70 znakach (obcięcie na mobile). Punkt #1 musi wzmacniać główną tożsamość produktu z tytułu. Słowa kluczowe backend powinny zawierać TYLKO słowa, których NIE ma już w tytule ani punktach — każdy niewykorzystany bajt poniżej 250 to stracona szansa na indeksowanie. Unikaj „podzielonej tożsamości" w tytułach — prowadź z JEDNĄ funkcją. Wybierz kategorię z BTG, żeby AI uwzględnił odpowiednie atrybuty.
+            <strong style={{ color: S.muted }}>Wskazówki optymalizacyjne:</strong> Główne słowo kluczowe musi pojawić się w pierwszych 70 znakach (obcięcie na mobile). Punkt #1 musi wzmacniać główną tożsamość produktu z tytułu. Słowa kluczowe backend powinny zawierać TYLKO słowa, których NIE ma już w tytule ani punktach — każdy niewykorzystany znak poniżej 250 to stracona szansa na indeksowanie. Unikaj „podzielonej tożsamości" w tytułach — prowadź z JEDNĄ funkcją. Wybierz kategorię z BTG, żeby AI uwzględnił odpowiednie atrybuty.
           </div>
         </div>
       </div>
