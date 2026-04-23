@@ -272,19 +272,33 @@ function SectionLabel({ children }) {
 
 function MarketplaceSelector({ selected, setSelected }) {
   return (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+    <div style={{
+      display: "flex", gap: 10, flexWrap: "wrap",
+      padding: 12, borderRadius: 14,
+      background: "linear-gradient(135deg, #3a2719 0%, #261b12 100%)",
+      border: "1px solid rgba(197, 92, 31, 0.22)",
+      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
+    }}>
       {MARKETPLACES.map(mp => {
         const on = selected === mp.code;
         return (
           <button key={mp.code} onClick={() => setSelected(mp.code)}
             style={{
-              padding: "8px 14px", borderRadius: 8,
-              border: on ? `2px solid ${mp.color}` : `1px solid ${S.border}`,
-              background: on ? `${mp.color}15` : S.input, color: on ? mp.color : S.muted,
-              cursor: "pointer", fontSize: 13, fontWeight: on ? 700 : 400,
-              display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s", fontFamily: S.font,
+              minHeight: 44, padding: "8px 14px", borderRadius: 10,
+              border: on ? `1px solid ${mp.color}` : "1px solid rgba(255,255,255,0.10)",
+              background: on
+                ? `linear-gradient(180deg, ${mp.color}2e 0%, rgba(255,255,255,0.10) 100%)`
+                : "rgba(255, 253, 249, 0.08)",
+              color: on ? "#fff8ec" : "#eadfce",
+              cursor: "pointer", fontSize: 13, fontWeight: on ? 800 : 600,
+              display: "flex", alignItems: "center", gap: 8, transition: "all 0.2s", fontFamily: S.font,
+              boxShadow: on ? `0 0 0 2px ${mp.color}22, 0 8px 20px rgba(0,0,0,0.16)` : "none",
             }}>
-            <span style={{ fontSize: 18, letterSpacing: 2 }}>{mp.flags.join("")}</span>
+            <span style={{
+              minWidth: 28, height: 22, display: "inline-flex", alignItems: "center", justifyContent: "center",
+              borderRadius: 6, background: on ? `${mp.color}24` : "rgba(255,255,255,0.08)",
+              color: on ? mp.color : "#d6c6b4", fontSize: 11, fontWeight: 900, letterSpacing: "0.06em",
+            }}>{mp.code}</span>
             <span>{mp.name}</span>
           </button>
         );
@@ -2311,7 +2325,7 @@ export default function App() {
         <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
           <TabBtn active={activeTool === "home"} onClick={() => setActiveTool("home")} icon="⌂">Narzędzia</TabBtn>
           <TabBtn active={activeTool === "optimizer"} onClick={() => setActiveTool("optimizer")} icon="⚡">Amazon Optimizer</TabBtn>
-          <TabBtn active={false} onClick={() => window.open(AMAZON_CALCULATOR_URL, "_blank", "noopener,noreferrer")} icon="↗">Kalkulator FBM</TabBtn>
+          <TabBtn active={false} onClick={() => { window.location.href = AMAZON_CALCULATOR_URL; }} icon="↗">Kalkulator FBM</TabBtn>
         </div>
 
         {activeTool === "home" && (
@@ -2322,7 +2336,7 @@ export default function App() {
 
         <div style={{ display: activeTool === "optimizer" ? "" : "none" }}>
         {/* MARKETPLACE */}
-        <Card style={{ marginBottom: 20 }}>
+        <Card style={{ marginBottom: 20, padding: 20, background: "rgba(255, 253, 249, 0.72)" }}>
           <SectionLabel>Docelowy marketplace</SectionLabel>
           <MarketplaceSelector selected={marketplace} setSelected={setMarketplace} />
         </Card>
