@@ -2333,16 +2333,16 @@ function FbmCalculator() {
   };
 
   const inputStyle = {
-    width: "100%", minHeight: 36, padding: "8px 10px", borderRadius: 8,
+    width: "100%", minHeight: 32, padding: "6px 10px", borderRadius: 8,
     border: `1px solid ${S.border}`, background: S.input, color: S.text,
-    fontFamily: S.font, fontSize: 13, outline: "none",
+    fontFamily: S.font, fontSize: 12, outline: "none",
   };
   const activeInputStyle = {
     ...inputStyle,
     border: "1px solid rgba(197, 92, 31, 0.34)",
     background: "rgba(255, 244, 231, 0.96)",
   };
-  const labelStyle = { display: "block", fontSize: 10, color: S.muted, fontWeight: 800, marginBottom: 4 };
+  const labelStyle = { display: "block", fontSize: 9, color: S.muted, fontWeight: 800, marginBottom: 3 };
   const activeLabelStyle = { ...labelStyle, color: S.accentSecondary };
   const thStyle = { padding: "7px 7px", textAlign: "left", color: S.accentSecondary, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${S.border}` };
   const tdStyle = { padding: "7px 7px", borderBottom: `1px solid rgba(84,61,28,0.10)`, fontSize: 12, verticalAlign: "middle" };
@@ -2380,14 +2380,14 @@ function FbmCalculator() {
         </div>
       </div>
 
-      <Card style={{ padding: 16, marginBottom: 12 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(300px, 1fr)", gap: 16, alignItems: "start" }}>
+      <Card style={{ padding: 12, marginBottom: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(300px, 1fr)", gap: 14, alignItems: "start" }}>
           <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
-              <h3 style={{ margin: 0, color: S.text, fontSize: 16 }}>Parametry</h3>
-              <span style={{ color: S.dim, fontSize: 12 }}>Jedna zmiana aktualizuje wszystkie markety</span>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 6 }}>
+              <h3 style={{ margin: 0, color: S.text, fontSize: 15 }}>Parametry</h3>
+              <span style={{ color: S.dim, fontSize: 11 }}>Jedna zmiana aktualizuje wszystkie markety</span>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(150px, 1fr))", gap: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(150px, 1fr))", gap: "7px 10px" }}>
               <label>
                 <span style={labelStyle}>Tryb kalkulacji</span>
                 <select value={form.calculationMode} onChange={e => update("calculationMode", e.target.value)} style={inputStyle}>
@@ -2430,9 +2430,9 @@ function FbmCalculator() {
             </div>
           </div>
 
-          <div style={{ display: "grid", gap: 8, alignSelf: "start" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 2 }}>
-              <h3 style={{ margin: 0, color: S.text, fontSize: 16 }}>Podsumowanie globalne</h3>
+          <div style={{ display: "grid", gap: 7, alignSelf: "start" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <h3 style={{ margin: 0, color: S.text, fontSize: 15 }}>Podsumowanie globalne</h3>
               <span style={{ color: S.dim, fontSize: 11 }}>Stan bieżący</span>
             </div>
             {[
@@ -2440,8 +2440,8 @@ function FbmCalculator() {
               ["Wybrana waga", `do ${result.weightTier} kg`],
               ["Cel kalkulacji", form.calculationMode === "profit" ? `${formatFbmCurrency(number("targetValue", 10), "EUR")} zysku` : `${number("targetValue", 25).toFixed(2).replace(".", ",")}% marży`],
             ].map(([label, value]) => (
-              <div key={label} style={{ padding: 12, borderRadius: 12, background: S.card2, border: `1px solid ${S.border}` }}>
-                <div style={{ fontSize: 11, color: S.dim, marginBottom: 4 }}>{label}</div>
+              <div key={label} style={{ padding: "9px 12px", borderRadius: 12, background: S.card2, border: `1px solid ${S.border}` }}>
+                <div style={{ fontSize: 10, color: S.dim, marginBottom: 3 }}>{label}</div>
                 <div style={{ fontWeight: 800, color: S.text }}>{value}</div>
               </div>
             ))}
