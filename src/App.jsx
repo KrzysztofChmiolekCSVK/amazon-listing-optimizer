@@ -186,8 +186,8 @@ function stemGerman(word) { return stemUniversal(word); }
 const S = {
   font: "'DM Sans', sans-serif",
   mono: "'JetBrains Mono', monospace",
-  bg: "#f4efe7", card: "rgba(255, 253, 249, 0.88)", card2: "rgba(255, 248, 241, 0.95)", input: "rgba(255, 255, 255, 0.9)",
-  border: "rgba(84, 61, 28, 0.12)", text: "#261b12", muted: "#6f6258", dim: "#8c7b6b",
+  bg: "#eee5d7", card: "rgba(250, 245, 238, 0.94)", card2: "rgba(244, 236, 225, 0.92)", input: "rgba(255, 252, 248, 0.94)",
+  border: "rgba(84, 61, 28, 0.16)", text: "#261b12", muted: "#6f6258", dim: "#8c7b6b",
   accent: "#c55c1f", accentLight: "#f59e0b", accentSecondary: "#8e3f12",
 };
 
@@ -275,9 +275,9 @@ function MarketplaceSelector({ selected, setSelected }) {
     <div style={{
       display: "flex", gap: 10, flexWrap: "wrap",
       padding: 12, borderRadius: 14,
-      background: "linear-gradient(135deg, #3a2719 0%, #261b12 100%)",
-      border: "1px solid rgba(197, 92, 31, 0.22)",
-      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
+      background: "linear-gradient(180deg, rgba(239,229,216,0.96) 0%, rgba(232,219,202,0.94) 100%)",
+      border: "1px solid rgba(84, 61, 28, 0.14)",
+      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45)",
     }}>
       {MARKETPLACES.map(mp => {
         const on = selected === mp.code;
@@ -285,19 +285,19 @@ function MarketplaceSelector({ selected, setSelected }) {
           <button key={mp.code} onClick={() => setSelected(mp.code)}
             style={{
               minHeight: 44, padding: "8px 14px", borderRadius: 10,
-              border: on ? `1px solid ${mp.color}` : "1px solid rgba(255,255,255,0.10)",
+              border: on ? `1px solid ${mp.color}` : "1px solid rgba(84,61,28,0.14)",
               background: on
-                ? `linear-gradient(180deg, ${mp.color}2e 0%, rgba(255,255,255,0.10) 100%)`
-                : "rgba(255, 253, 249, 0.08)",
-              color: on ? "#fff8ec" : "#eadfce",
+                ? `linear-gradient(180deg, ${mp.color}1f 0%, rgba(255,252,248,0.92) 100%)`
+                : "rgba(255, 252, 248, 0.72)",
+              color: on ? S.text : S.muted,
               cursor: "pointer", fontSize: 13, fontWeight: on ? 800 : 600,
               display: "flex", alignItems: "center", gap: 8, transition: "all 0.2s", fontFamily: S.font,
-              boxShadow: on ? `0 0 0 2px ${mp.color}22, 0 8px 20px rgba(0,0,0,0.16)` : "none",
+              boxShadow: on ? `0 0 0 2px ${mp.color}18, 0 6px 16px rgba(89,57,22,0.08)` : "none",
             }}>
             <span style={{
               minWidth: 28, height: 22, display: "inline-flex", alignItems: "center", justifyContent: "center",
-              borderRadius: 6, background: on ? `${mp.color}24` : "rgba(255,255,255,0.08)",
-              color: on ? mp.color : "#d6c6b4", fontSize: 11, fontWeight: 900, letterSpacing: "0.06em",
+              borderRadius: 6, background: on ? `${mp.color}20` : "rgba(84,61,28,0.08)",
+              color: on ? mp.color : S.dim, fontSize: 11, fontWeight: 900, letterSpacing: "0.06em",
             }}>{mp.code}</span>
             <span>{mp.name}</span>
           </button>
@@ -2336,7 +2336,7 @@ export default function App() {
 
         <div style={{ display: activeTool === "optimizer" ? "" : "none" }}>
         {/* MARKETPLACE */}
-        <Card style={{ marginBottom: 20, padding: 20, background: "rgba(255, 253, 249, 0.72)" }}>
+        <Card style={{ marginBottom: 20, padding: 20 }}>
           <SectionLabel>Docelowy marketplace</SectionLabel>
           <MarketplaceSelector selected={marketplace} setSelected={setMarketplace} />
         </Card>
