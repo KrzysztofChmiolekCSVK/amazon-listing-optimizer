@@ -26,6 +26,8 @@ const GEMINI_MODELS = [
   { id: "gemma-3-27b-it", name: "Gemma 3 27B", desc: "14 400 req/dzień — open source, bez zdjęć" },
 ];
 
+const AMAZON_CALCULATOR_URL = "https://kalkulator-ceny-sprzedazy-fbm.pages.dev/";
+
 function getProviderLabel(provider) {
   return provider === "gemini" ? "Gemini" : "Groq";
 }
@@ -2138,7 +2140,95 @@ function ManualEditor({ listing, setListing }) {
    GŁÓWNA APLIKACJA
    ═══════════════════════════════════════════ */
 
+function ToolHub({ onOpenOptimizer, provider, model }) {
+  const tools = [
+    {
+      title: "Amazon Optimizer",
+      tag: "Listing AI",
+      text: "Generator tytułów, bulletów, opisu i backend keywords dla marketplace EU.",
+      action: "Otwórz optimizer",
+      onClick: onOpenOptimizer,
+    },
+    {
+      title: "Kalkulator Amazon FBM",
+      tag: "Cena sprzedaży",
+      text: "Kalkulator ceny, kosztów i marży dla sprzedaży Amazon FBM.",
+      action: "Otwórz kalkulator",
+      href: AMAZON_CALCULATOR_URL,
+    },
+  ];
+
+  return (
+    <div style={{ animation: "fadeIn 0.3s ease" }}>
+      <div style={{ marginBottom: 20, padding: "26px 0 12px", display: "grid", gap: 12 }}>
+        <SectionLabel>Strona główna</SectionLabel>
+        <h2 style={{ margin: 0, color: S.text, fontSize: 28, lineHeight: 1.1 }}>Narzędzia Amazon</h2>
+        <div style={{ maxWidth: 680, color: S.muted, fontSize: 14, lineHeight: 1.6 }}>
+          Jedno miejsce do pracy nad listingami, ceną sprzedaży i kontrolą rentowności.
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+          <span style={{
+            display: "inline-flex", padding: "5px 10px", borderRadius: 999,
+            border: `1px solid ${S.accent}66`, background: "#ff990015",
+            fontSize: 11, fontWeight: 700, color: S.accent,
+          }}>
+            Domyślnie: {getProviderLabel(provider)}
+          </span>
+          <span style={{
+            display: "inline-flex", padding: "5px 10px", borderRadius: 999,
+            border: `1px solid ${S.border}`, background: S.input,
+            fontSize: 11, fontWeight: 700, color: S.text,
+          }}>
+            {getModelDisplayName(provider, model)}
+          </span>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
+        {tools.map(tool => {
+          const content = (
+            <>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 11, color: S.accent, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>
+                    {tool.tag}
+                  </div>
+                  <div style={{ color: S.text, fontSize: 20, fontWeight: 800, marginBottom: 8 }}>{tool.title}</div>
+                </div>
+                <span style={{ color: S.accent, fontSize: 22 }}>→</span>
+              </div>
+              <div style={{ color: S.muted, fontSize: 13, lineHeight: 1.6, minHeight: 42 }}>{tool.text}</div>
+              <div style={{ marginTop: 22, display: "inline-flex", alignItems: "center", gap: 8, color: S.accent, fontSize: 13, fontWeight: 800 }}>
+                {tool.action}
+              </div>
+            </>
+          );
+
+          if (tool.href) {
+            return (
+              <a key={tool.title} href={tool.href} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+                <Card style={{ height: "100%", cursor: "pointer", background: S.card2 }}>
+                  {content}
+                </Card>
+              </a>
+            );
+          }
+
+          return (
+            <button key={tool.title} type="button" onClick={tool.onClick} style={{ padding: 0, border: 0, background: "transparent", textAlign: "left", fontFamily: S.font, cursor: "pointer" }}>
+              <Card style={{ height: "100%", background: S.card2 }}>
+                {content}
+              </Card>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
+  const [activeTool, setActiveTool] = useState("home");
   const [tab, setTab] = useState("generate");
   const [marketplace, setMarketplace] = useState("DE");
   const [provider, setProvider] = useState(getInitialProvider);
@@ -2229,9 +2319,9 @@ export default function App() {
               margin: 0, fontSize: 22, fontWeight: 700,
               background: `linear-gradient(90deg, ${S.accent}, #ffcc80)`,
               WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-            }}>Optymalizator Listingów Amazon</h1>
+            }}>Narzędzia Amazon</h1>
             <div style={{ fontSize: 12, color: S.dim, marginTop: 2 }}>
-              Optymalizacja rynków EU — AI proxy · A9/A10 · Rufus & Cosmo · Browse Tree Guide
+              Optimizer listingów, kalkulator FBM i wsparcie pracy na marketplace Amazon
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10, alignItems: "center" }}>
               <span style={{
@@ -2240,7 +2330,7 @@ export default function App() {
                 border: `1px solid ${S.border}`, background: S.card2,
                 fontSize: 11, fontWeight: 700, color: S.muted,
               }}>
-                Aktualnie
+                Model optimizera
               </span>
               <span style={{
                 display: "inline-flex", alignItems: "center", gap: 6,
@@ -2264,6 +2354,21 @@ export default function App() {
       </div>
 
       <div style={{ padding: "20px 28px", maxWidth: 960, margin: "0 auto" }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+          <TabBtn active={activeTool === "home"} onClick={() => setActiveTool("home")} icon="⌂">Narzędzia</TabBtn>
+          <TabBtn active={activeTool === "optimizer"} onClick={() => setActiveTool("optimizer")} icon="⚡">Amazon Optimizer</TabBtn>
+          <TabBtn active={false} onClick={() => window.open(AMAZON_CALCULATOR_URL, "_blank", "noopener,noreferrer")} icon="↗">Kalkulator FBM</TabBtn>
+        </div>
+
+        {activeTool === "home" && (
+          <ToolHub
+            onOpenOptimizer={() => setActiveTool("optimizer")}
+            provider={provider}
+            model={model}
+          />
+        )}
+
+        <div style={{ display: activeTool === "optimizer" ? "" : "none" }}>
         {/* MARKETPLACE */}
         <Card style={{ marginBottom: 20 }}>
           <SectionLabel>Docelowy marketplace</SectionLabel>
@@ -2311,6 +2416,7 @@ export default function App() {
           <div style={{ fontSize: 12, color: S.dim, lineHeight: 1.6 }}>
             <strong style={{ color: S.muted }}>Wskazówki optymalizacyjne:</strong> Główne słowo kluczowe musi pojawić się w pierwszych 70 znakach (obcięcie na mobile). Punkt #1 musi wzmacniać główną tożsamość produktu z tytułu. Słowa kluczowe backend powinny zawierać TYLKO słowa, których NIE ma już w tytule ani punktach — każdy niewykorzystany znak poniżej 250 to stracona szansa na indeksowanie. Unikaj „podzielonej tożsamości" w tytułach — prowadź z JEDNĄ funkcją. Wybierz kategorię z BTG, żeby AI uwzględnił odpowiednie atrybuty.
           </div>
+        </div>
         </div>
       </div>
     </div>
