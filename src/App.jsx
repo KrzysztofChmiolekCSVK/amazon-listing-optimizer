@@ -2338,8 +2338,8 @@ function FbmCalculator() {
     fontFamily: S.font, fontSize: 13, outline: "none",
   };
   const labelStyle = { display: "block", fontSize: 11, color: S.muted, fontWeight: 800, marginBottom: 6 };
-  const thStyle = { padding: "10px 8px", textAlign: "left", color: S.accentSecondary, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${S.border}` };
-  const tdStyle = { padding: "10px 8px", borderBottom: `1px solid rgba(84,61,28,0.10)`, fontSize: 13, verticalAlign: "middle" };
+  const thStyle = { padding: "9px 7px", textAlign: "left", color: S.accentSecondary, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${S.border}` };
+  const tdStyle = { padding: "9px 7px", borderBottom: `1px solid rgba(84,61,28,0.10)`, fontSize: 12, verticalAlign: "middle" };
 
   const renderInput = (label, valueKey) => (
     <label>
@@ -2353,19 +2353,19 @@ function FbmCalculator() {
       <div style={{ marginBottom: 20, padding: "26px 0 12px", display: "grid", gap: 12 }}>
         <SectionLabel>Kalkulator FBM</SectionLabel>
         <h2 style={{ margin: 0, color: S.text, fontSize: 28, lineHeight: 1.1 }}>Kalkulator ceny sprzedaży FBM</h2>
-        <div style={{ maxWidth: 720, color: S.muted, fontSize: 14, lineHeight: 1.6 }}>
+        <div style={{ maxWidth: 960, color: S.muted, fontSize: 14, lineHeight: 1.6 }}>
           Jeden widok dla cen brutto, kosztów wysyłki, prowizji Amazon, zysku i marży na marketplace EU.
         </div>
       </div>
 
       <Card style={{ padding: 20, marginBottom: 16 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(260px, 1fr)", gap: 18 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 3fr) minmax(260px, 1fr)", gap: 18 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
               <h3 style={{ margin: 0, color: S.text, fontSize: 16 }}>Parametry</h3>
               <span style={{ color: S.dim, fontSize: 12 }}>Jedna zmiana aktualizuje wszystkie markety</span>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
               <label>
                 <span style={labelStyle}>Tryb kalkulacji</span>
                 <select value={form.calculationMode} onChange={e => update("calculationMode", e.target.value)} style={inputStyle}>
@@ -2413,7 +2413,7 @@ function FbmCalculator() {
           <span style={{ color: S.dim, fontSize: 12 }}>Cena brutto jest liczona po odjęciu VAT, prowizji i kosztów.</span>
         </div>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1120 }}>
             <thead style={{ background: "rgba(197, 92, 31, 0.08)" }}>
               <tr>
                 {["Market", "Kurier", "Waluta", "VAT", "Wysyłka", "Koszt całkowity", "Cena netto", "VAT w cenie", "Cena brutto", "Prowizja Amazon", "Zysk", "Marża"].map(head => (
@@ -2595,7 +2595,7 @@ export default function App() {
         input:focus, textarea:focus { border-color: ${S.accent} !important; box-shadow: 0 0 0 2px rgba(197, 92, 31, 0.14); }
       `}</style>
 
-      <div style={{ padding: "20px 28px", maxWidth: 960, margin: "0 auto" }}>
+      <div style={{ padding: "20px 28px", width: "min(100%, 1420px)", margin: "0 auto" }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
           <TabBtn active={activeTool === "home"} onClick={() => setActiveTool("home")} icon="⌂">Narzędzia</TabBtn>
           <TabBtn active={activeTool === "optimizer"} onClick={() => setActiveTool("optimizer")} icon="⚡">Amazon Optimizer</TabBtn>
