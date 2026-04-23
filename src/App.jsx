@@ -26,14 +26,33 @@ const GEMINI_MODELS = [
   { id: "gemma-3-27b-it", name: "Gemma 3 27B", desc: "14 400 req/dzień — open source, bez zdjęć" },
 ];
 
+const NVIDIA_MODELS = [
+  { id: "minimaxai/minimax-m2.7", name: "MiniMax M2.7", desc: "Nowy model ogólny — dobry do testów listingów" },
+  { id: "z-ai/glm5.1", name: "GLM 5.1", desc: "Silny model ogólny, warto porównać jakość językową" },
+  { id: "deepseek-ai/deepseek-v3.2", name: "DeepSeek V3.2", desc: "Mocny model instrukcyjny i analityczny" },
+  { id: "openai/gpt-oss-120b", name: "GPT-OSS 120B", desc: "Duży model open-weight przez NVIDIA NIM" },
+  { id: "qwen/qwen3-next-80b-a3b-instruct", name: "Qwen3 Next 80B", desc: "Dobry balans jakości i instrukcji" },
+  { id: "moonshotai/kimi-k2-instruct", name: "Kimi K2", desc: "Model długi/ogólny do generowania treści" },
+  { id: "nvidia/nemotron-3-super-120b-a12b", name: "Nemotron 3 Super 120B", desc: "Model NVIDIA do zadań ogólnych" },
+  { id: "sarvamai/sarvam-m", name: "Sarvam-M", desc: "Lekki model do eksperymentów i porównań" },
+];
+
 const AMAZON_CALCULATOR_URL = "https://kalkulator-ceny-sprzedazy-fbm.pages.dev/";
 
 function getProviderLabel(provider) {
-  return provider === "gemini" ? "Gemini" : "Groq";
+  if (provider === "gemini") return "Gemini";
+  if (provider === "nvidia") return "NVIDIA";
+  return "Groq";
+}
+
+function getModelsForProvider(provider) {
+  if (provider === "gemini") return GEMINI_MODELS;
+  if (provider === "nvidia") return NVIDIA_MODELS;
+  return GROQ_MODELS;
 }
 
 function getModelDisplayName(provider, modelId) {
-  const models = provider === "gemini" ? GEMINI_MODELS : GROQ_MODELS;
+  const models = getModelsForProvider(provider);
   return models.find(m => m.id === modelId)?.name || modelId || "";
 }
 
@@ -142,7 +161,7 @@ function getInitialProvider() {
 function getInitialModel() {
   const provider = getInitialProvider();
   const storedModel = readStoredValue("amz-model", "");
-  const models = provider === "gemini" ? GEMINI_MODELS : GROQ_MODELS;
+  const models = getModelsForProvider(provider);
   return models.some(m => m.id === storedModel) ? storedModel : models[0].id;
 }
 
@@ -878,14 +897,13 @@ function HistoryPanel({ entries, onLoad, onDelete }) {
    ═══════════════════════════════════════════ */
 
 function SettingsPanel({ provider, setProvider, model, setModel }) {
-  const models = provider === "gemini" ? GEMINI_MODELS : GROQ_MODELS;
+  const models = getModelsForProvider(provider);
 
   function switchProvider(p) {
     setProvider(p);
-    if (p === "gemini" && !GEMINI_MODELS.find(m => m.id === model)) {
-      setModel("gemini-3.1-flash-lite-preview");
-    } else if (p === "groq" && !GROQ_MODELS.find(m => m.id === model)) {
-      setModel("meta-llama/llama-4-scout-17b-16e-instruct");
+    const nextModels = getModelsForProvider(p);
+    if (!nextModels.find(m => m.id === model)) {
+      setModel(nextModels[0].id);
     }
   }
 
@@ -908,6 +926,7 @@ function SettingsPanel({ provider, setProvider, model, setModel }) {
           {[
             { id: "groq", name: "Groq", desc: "Llama 4, Qwen, GPT-OSS", icon: "⚡" },
             { id: "gemini", name: "Google Gemini", desc: "Gemini 3.1 Flash Lite / Gemma 3", icon: "💎" },
+            { id: "nvidia", name: "NVIDIA NIM", desc: "MiniMax, GLM, DeepSeek, Nemotron, GPT-OSS", icon: "▣" },
           ].map(p => (
             <button key={p.id} onClick={() => switchProvider(p.id)} style={{
               padding: "10px 16px", borderRadius: 8, flex: 1,
@@ -932,13 +951,12 @@ function SettingsPanel({ provider, setProvider, model, setModel }) {
           padding: "12px 14px", background: S.input, border: `1px solid ${S.border}`,
           borderRadius: 8, color: S.muted, fontSize: 13, lineHeight: 1.5,
         }}>
-          Klucze są używane po stronie Cloudflare Function z sekretów GEMINI_API_KEY i GROQ_API_KEY.
+          Klucze są używane po stronie Cloudflare Function z sekretów GEMINI_API_KEY, GROQ_API_KEY i NVIDIA_API_KEY.
         </div>
         <div style={{ fontSize: 11, color: S.dim, marginTop: 4 }}>
-          {provider === "gemini"
-            ? <>Darmowy klucz z <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener" style={{ color: S.accent, textDecoration: "none" }}>aistudio.google.com/api-keys</a></>
-            : <>Darmowy klucz z <a href="https://console.groq.com/keys" target="_blank" rel="noopener" style={{ color: S.accent, textDecoration: "none" }}>console.groq.com/keys</a></>
-          }
+          {provider === "gemini" && <>Darmowy klucz z <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener" style={{ color: S.accent, textDecoration: "none" }}>aistudio.google.com/api-keys</a></>}
+          {provider === "groq" && <>Darmowy klucz z <a href="https://console.groq.com/keys" target="_blank" rel="noopener" style={{ color: S.accent, textDecoration: "none" }}>console.groq.com/keys</a></>}
+          {provider === "nvidia" && <>Klucz z <a href="https://build.nvidia.com/models" target="_blank" rel="noopener" style={{ color: S.accent, textDecoration: "none" }}>build.nvidia.com/models</a></>}
         </div>
       </div>
 
