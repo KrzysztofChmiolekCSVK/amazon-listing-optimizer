@@ -186,9 +186,9 @@ function stemGerman(word) { return stemUniversal(word); }
 const S = {
   font: "'DM Sans', sans-serif",
   mono: "'JetBrains Mono', monospace",
-  bg: "#0a0b0e", card: "#15161e", input: "#12131a",
-  border: "#2a2d35", text: "#e8eaed", muted: "#8a8f98", dim: "#6b7280",
-  accent: "#ff9900", accentLight: "#ffad33",
+  bg: "#07080c", card: "#12141c", card2: "#181b26", input: "#1a1d2a",
+  border: "#1f2335", text: "#e8eaf0", muted: "#8b90a5", dim: "#5c6078",
+  accent: "#6366f1", accentLight: "#818cf8", accentSecondary: "#8b5cf6",
 };
 
 function CharBadge({ current, max, label }) {
@@ -379,7 +379,7 @@ function CategoryBrowser({ btg, selectedCategory, setSelectedCategory, categoryL
                 setShowDropdown(false);
               }} style={{
                 display: "block", width: "100%", padding: "10px 14px", border: "none", borderBottom: "1px solid #1e2028",
-                background: selectedCategory === cat.id ? "#ff990015" : "transparent",
+                background: selectedCategory === cat.id ? "rgba(99,102,241,0.12)" : "transparent",
                 color: S.text, fontSize: 13, fontFamily: S.font, cursor: "pointer", textAlign: "left",
               }}>
                 <div style={{ fontWeight: 500 }}>{cat.path}</div>
@@ -406,7 +406,7 @@ function CategoryBrowser({ btg, selectedCategory, setSelectedCategory, categoryL
       {selCat && (
         <div style={{ animation: "fadeIn 0.3s ease" }}>
           <div style={{
-            padding: "10px 14px", background: "#ff990010", border: `1px solid #ff990030`,
+            padding: "10px 14px", background: "rgba(99,102,241,0.10)", border: `1px solid rgba(99,102,241,0.30)`,
             borderRadius: 8, marginBottom: 14, fontSize: 13,
           }}>
             <span style={{ color: S.muted }}>item_type_keyword: </span>
@@ -839,7 +839,7 @@ function HistoryPanel({ entries, onLoad, onDelete }) {
               </div>
               <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                 <button onClick={() => onLoad(entry)} style={{
-                  padding: "6px 12px", background: "#ff990015", border: `1px solid #ff990030`,
+                  padding: "6px 12px", background: "rgba(99,102,241,0.12)", border: `1px solid rgba(99,102,241,0.30)`,
                   borderRadius: 6, color: S.accent, fontSize: 12, cursor: "pointer", fontWeight: 600, fontFamily: S.font,
                 }}>
                   Załaduj
@@ -898,7 +898,7 @@ function SettingsPanel({ provider, setProvider, model, setModel }) {
             <button key={p.id} onClick={() => switchProvider(p.id)} style={{
               padding: "10px 16px", borderRadius: 8, flex: 1,
               border: provider === p.id ? `2px solid ${S.accent}` : `1px solid ${S.border}`,
-              background: provider === p.id ? "#ff990015" : S.input,
+              background: provider === p.id ? "rgba(99,102,241,0.12)" : S.input,
               color: provider === p.id ? S.accent : S.muted,
               cursor: "pointer", fontSize: 13, fontFamily: S.font, textAlign: "left",
             }}>
@@ -938,7 +938,7 @@ function SettingsPanel({ provider, setProvider, model, setModel }) {
             <button key={m.id} onClick={() => setModel(m.id)} style={{
               padding: "8px 14px", borderRadius: 8,
               border: model === m.id ? `2px solid ${S.accent}` : `1px solid ${S.border}`,
-              background: model === m.id ? "#ff990015" : S.input,
+              background: model === m.id ? "rgba(99,102,241,0.12)" : S.input,
               color: model === m.id ? S.accent : S.muted,
               cursor: "pointer", fontSize: 12, fontFamily: S.font, textAlign: "left",
             }}>
@@ -1884,16 +1884,34 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
 
   return (
     <>
-    <Card style={{ background: "linear-gradient(135deg, #1a1320 0%, #15161e 50%, #131820 100%)", marginBottom: 24 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+    <Card style={{ background: "linear-gradient(135deg, #12141c 0%, #181b26 100%)", marginBottom: 24 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, justifyContent: "space-between", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{
           width: 36, height: 36, borderRadius: 10,
-          background: `linear-gradient(135deg, ${S.accent}, ${S.accentLight})`,
+          background: `linear-gradient(135deg, ${S.accent}, ${S.accentSecondary})`,
           display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18,
         }}>✨</div>
         <div>
           <div style={{ fontSize: 16, fontWeight: 700, color: S.text }}>Generator listingów AI</div>
           <div style={{ fontSize: 11, color: S.muted }}>Opisz produkt i otrzymaj zoptymalizowany listing</div>
+        </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <span style={{
+            display: "inline-flex", alignItems: "center", padding: "5px 10px", borderRadius: 999,
+            border: `1px solid ${S.accent}66`, background: "rgba(99,102,241,0.12)",
+            color: S.accentLight, fontSize: 11, fontWeight: 800,
+          }}>
+            {getProviderLabel(provider)}
+          </span>
+          <span style={{
+            display: "inline-flex", alignItems: "center", padding: "5px 10px", borderRadius: 999,
+            border: `1px solid ${S.border}`, background: S.input,
+            color: S.text, fontSize: 11, fontWeight: 700,
+          }}>
+            {getModelDisplayName(provider, model)}
+          </span>
         </div>
       </div>
 
@@ -2140,7 +2158,7 @@ function ManualEditor({ listing, setListing }) {
    GŁÓWNA APLIKACJA
    ═══════════════════════════════════════════ */
 
-function ToolHub({ onOpenOptimizer, provider, model }) {
+function ToolHub({ onOpenOptimizer }) {
   const tools = [
     {
       title: "Amazon Optimizer",
@@ -2165,22 +2183,6 @@ function ToolHub({ onOpenOptimizer, provider, model }) {
         <h2 style={{ margin: 0, color: S.text, fontSize: 28, lineHeight: 1.1 }}>Narzędzia Amazon</h2>
         <div style={{ maxWidth: 680, color: S.muted, fontSize: 14, lineHeight: 1.6 }}>
           Jedno miejsce do pracy nad listingami, ceną sprzedaży i kontrolą rentowności.
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
-          <span style={{
-            display: "inline-flex", padding: "5px 10px", borderRadius: 999,
-            border: `1px solid ${S.accent}66`, background: "#ff990015",
-            fontSize: 11, fontWeight: 700, color: S.accent,
-          }}>
-            Domyślnie: {getProviderLabel(provider)}
-          </span>
-          <span style={{
-            display: "inline-flex", padding: "5px 10px", borderRadius: 999,
-            border: `1px solid ${S.border}`, background: S.input,
-            fontSize: 11, fontWeight: 700, color: S.text,
-          }}>
-            {getModelDisplayName(provider, model)}
-          </span>
         </div>
       </div>
 
@@ -2302,56 +2304,8 @@ export default function App() {
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: ${S.bg}; }
         ::-webkit-scrollbar-thumb { background: ${S.border}; border-radius: 3px; }
-        input:focus, textarea:focus { border-color: ${S.accent} !important; box-shadow: 0 0 0 2px #ff990020; }
+        input:focus, textarea:focus { border-color: ${S.accent} !important; box-shadow: 0 0 0 2px rgba(99,102,241,0.20); }
       `}</style>
-
-      {/* HEADER */}
-      <div style={{ padding: "20px 28px", borderBottom: `1px solid #1e2028`, background: "linear-gradient(180deg, #12131a 0%, #0a0b0e 100%)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{
-            width: 42, height: 42, borderRadius: 12,
-            background: `linear-gradient(135deg, ${S.accent}, #ffcc80)`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 22, fontWeight: 700, color: S.bg, boxShadow: `0 4px 20px ${S.accent}40`,
-          }}>A</div>
-          <div>
-            <h1 style={{
-              margin: 0, fontSize: 22, fontWeight: 700,
-              background: `linear-gradient(90deg, ${S.accent}, #ffcc80)`,
-              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-            }}>Narzędzia Amazon</h1>
-            <div style={{ fontSize: 12, color: S.dim, marginTop: 2 }}>
-              Optimizer listingów, kalkulator FBM i wsparcie pracy na marketplace Amazon
-            </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10, alignItems: "center" }}>
-              <span style={{
-                display: "inline-flex", alignItems: "center", gap: 6,
-                padding: "5px 10px", borderRadius: 999,
-                border: `1px solid ${S.border}`, background: S.card2,
-                fontSize: 11, fontWeight: 700, color: S.muted,
-              }}>
-                Model optimizera
-              </span>
-              <span style={{
-                display: "inline-flex", alignItems: "center", gap: 6,
-                padding: "5px 10px", borderRadius: 999,
-                border: `1px solid ${S.accent}66`, background: "#ff990015",
-                fontSize: 11, fontWeight: 700, color: S.accent,
-              }}>
-                {getProviderLabel(provider)}
-              </span>
-              <span style={{
-                display: "inline-flex", alignItems: "center", gap: 6,
-                padding: "5px 10px", borderRadius: 999,
-                border: `1px solid ${S.border}`, background: S.input,
-                fontSize: 11, fontWeight: 700, color: S.text,
-              }}>
-                {getModelDisplayName(provider, model)}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <div style={{ padding: "20px 28px", maxWidth: 960, margin: "0 auto" }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
@@ -2363,8 +2317,6 @@ export default function App() {
         {activeTool === "home" && (
           <ToolHub
             onOpenOptimizer={() => setActiveTool("optimizer")}
-            provider={provider}
-            model={model}
           />
         )}
 
@@ -2409,7 +2361,7 @@ export default function App() {
 
         {/* TIPS */}
         <div style={{
-          marginTop: 24, padding: 20, background: "#12131a", borderRadius: 12, border: "1px solid #1e2028",
+          marginTop: 24, padding: 20, background: S.card, borderRadius: 12, border: `1px solid ${S.border}`,
           display: "flex", gap: 12, alignItems: "flex-start",
         }}>
           <span style={{ fontSize: 20 }}>💡</span>
