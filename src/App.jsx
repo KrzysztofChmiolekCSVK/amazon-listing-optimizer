@@ -2241,7 +2241,7 @@ function FbmCalculator() {
     eurRate: "4,2500",
     gbpRate: "4,9000",
     sekRate: "0,3900",
-    upsFuelSurcharge: "31,75",
+    upsFuelSurcharge: "32,50",
     upsDeliveryFeePln: "1,15",
   });
 
@@ -2272,7 +2272,7 @@ function FbmCalculator() {
 
     let amount = rateConfig.rates[matchedWeight];
     if (FBM_UPS_FUEL_MARKETS.has(marketCode)) {
-      amount += amount * (number("upsFuelSurcharge", 31.75) / 100) + number("upsDeliveryFeePln", 1.15);
+      amount += amount * (number("upsFuelSurcharge", 32.5) / 100) + number("upsDeliveryFeePln", 1.15);
     }
     return { matchedWeight, amount, currency: rateConfig.currency };
   };
@@ -2341,9 +2341,9 @@ function FbmCalculator() {
   const thStyle = { padding: "9px 7px", textAlign: "left", color: S.accentSecondary, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${S.border}` };
   const tdStyle = { padding: "9px 7px", borderBottom: `1px solid rgba(84,61,28,0.10)`, fontSize: 12, verticalAlign: "middle" };
 
-  const renderInput = (label, valueKey) => (
+  const renderInput = (label, valueKey, labelNode) => (
     <label>
-      <span style={labelStyle}>{label}</span>
+      <span style={labelStyle}>{labelNode || label}</span>
       <input value={form[valueKey]} onChange={e => update(valueKey, e.target.value)} style={inputStyle} />
     </label>
   );
@@ -2387,7 +2387,16 @@ function FbmCalculator() {
               {renderInput("Kurs PLN -> EUR", "eurRate")}
               {renderInput("Kurs PLN -> GBP", "gbpRate")}
               {renderInput("Kurs PLN -> SEK", "sekRate")}
-              {renderInput("Opłata paliwowa UPS (%)", "upsFuelSurcharge")}
+              {renderInput("Opłata paliwowa UPS (%)", "upsFuelSurcharge", (
+                <a
+                  href="https://www.ups.com/pl/pl/support/shipping-support/shipping-costs-rates/fuel-surcharges"
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ color: S.accentSecondary, textDecoration: "underline", textUnderlineOffset: 3 }}
+                >
+                  Opłata paliwowa UPS (%)
+                </a>
+              ))}
               {renderInput("Doręczenie UPS (PLN)", "upsDeliveryFeePln")}
             </div>
           </div>
