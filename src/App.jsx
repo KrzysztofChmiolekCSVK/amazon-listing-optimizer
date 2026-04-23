@@ -186,9 +186,9 @@ function stemGerman(word) { return stemUniversal(word); }
 const S = {
   font: "'DM Sans', sans-serif",
   mono: "'JetBrains Mono', monospace",
-  bg: "#07080c", card: "#12141c", card2: "#181b26", input: "#1a1d2a",
-  border: "#1f2335", text: "#e8eaf0", muted: "#8b90a5", dim: "#5c6078",
-  accent: "#6366f1", accentLight: "#818cf8", accentSecondary: "#8b5cf6",
+  bg: "#f4efe7", card: "rgba(255, 253, 249, 0.88)", card2: "rgba(255, 248, 241, 0.95)", input: "rgba(255, 255, 255, 0.9)",
+  border: "rgba(84, 61, 28, 0.12)", text: "#261b12", muted: "#6f6258", dim: "#8c7b6b",
+  accent: "#c55c1f", accentLight: "#f59e0b", accentSecondary: "#8e3f12",
 };
 
 function CharBadge({ current, max, label }) {
@@ -197,7 +197,7 @@ function CharBadge({ current, max, label }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
       <span style={{ color: S.muted }}>{label}</span>
-      <div style={{ width: 80, height: 6, background: "#1e2028", borderRadius: 3, overflow: "hidden" }}>
+      <div style={{ width: 80, height: 6, background: "#eadfce", borderRadius: 3, overflow: "hidden" }}>
         <div style={{ width: `${Math.min(pct, 100)}%`, height: "100%", background: color, borderRadius: 3, transition: "width 0.3s" }} />
       </div>
       <span style={{ color, fontFamily: S.mono, fontWeight: 600 }}>{current}/{max}</span>
@@ -211,7 +211,7 @@ function ScoreRing({ score, size = 64, label }) {
   return (
     <div style={{ textAlign: "center" }}>
       <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#1e2028" strokeWidth={4} />
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#eadfce" strokeWidth={4} />
         <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={4}
           strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
           style={{ transition: "stroke-dashoffset 0.8s" }} />
@@ -226,8 +226,8 @@ function TabBtn({ active, onClick, children, icon }) {
   return (
     <button onClick={onClick} style={{
       padding: "10px 20px",
-      background: active ? `linear-gradient(135deg, ${S.accent}, ${S.accentLight})` : "transparent",
-      color: active ? S.bg : S.muted, border: active ? "none" : `1px solid ${S.border}`,
+      background: active ? "linear-gradient(135deg, #f4d6b6, #faefe1)" : S.card,
+      color: active ? S.text : S.muted, border: active ? "1px solid rgba(197, 92, 31, 0.22)" : `1px solid ${S.border}`,
       borderRadius: 8, cursor: "pointer", fontWeight: active ? 700 : 500, fontSize: 13,
       display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s", fontFamily: S.font,
     }}>
@@ -244,7 +244,7 @@ function Field({ label, value, onChange, placeholder, multi, maxChars, maxBytes,
   };
   return (
     <div style={{ marginBottom: 16 }}>
-      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#c4c8d0", marginBottom: 6,
+      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: S.muted, marginBottom: 6,
         textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: S.font }}>{label}</label>
       {multi
         ? <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={4} style={{ ...st, resize: "vertical" }} />
@@ -378,8 +378,8 @@ function CategoryBrowser({ btg, selectedCategory, setSelectedCategory, categoryL
                 handlePickCategory(cat.id);
                 setShowDropdown(false);
               }} style={{
-                display: "block", width: "100%", padding: "10px 14px", border: "none", borderBottom: "1px solid #1e2028",
-                background: selectedCategory === cat.id ? "rgba(99,102,241,0.12)" : "transparent",
+                display: "block", width: "100%", padding: "10px 14px", border: "none", borderBottom: `1px solid ${S.border}`,
+                background: selectedCategory === cat.id ? "rgba(197, 92, 31, 0.10)" : "transparent",
                 color: S.text, fontSize: 13, fontFamily: S.font, cursor: "pointer", textAlign: "left",
               }}>
                 <div style={{ fontWeight: 500 }}>{cat.path}</div>
@@ -406,7 +406,7 @@ function CategoryBrowser({ btg, selectedCategory, setSelectedCategory, categoryL
       {selCat && (
         <div style={{ animation: "fadeIn 0.3s ease" }}>
           <div style={{
-            padding: "10px 14px", background: "rgba(99,102,241,0.10)", border: `1px solid rgba(99,102,241,0.30)`,
+            padding: "10px 14px", background: "rgba(197, 92, 31, 0.10)", border: `1px solid rgba(197, 92, 31, 0.26)`,
             borderRadius: 8, marginBottom: 14, fontSize: 13,
           }}>
             <span style={{ color: S.muted }}>item_type_keyword: </span>
@@ -419,8 +419,8 @@ function CategoryBrowser({ btg, selectedCategory, setSelectedCategory, categoryL
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {attrs.map((a, i) => (
                   <span key={i} style={{
-                    padding: "5px 10px", background: "#1e2028", borderRadius: 6,
-                    fontSize: 12, color: "#c4c8d0", fontFamily: S.mono, border: "1px solid #2a2d35",
+                    padding: "5px 10px", background: S.input, borderRadius: 6,
+                    fontSize: 12, color: S.muted, fontFamily: S.mono, border: `1px solid ${S.border}`,
                   }}>
                     {ATTR_LABELS[a] || a}
                     <span style={{ color: S.dim, marginLeft: 4, fontSize: 10 }}>({a})</span>
@@ -451,7 +451,7 @@ function CopyBtn({ text, label }) {
   };
   return (
     <button onClick={copy} title={`Kopiuj ${label || ""}`} style={{
-      background: copied ? "#22c55e20" : "#1e2028", border: `1px solid ${copied ? "#22c55e50" : "#2a2d35"}`,
+      background: copied ? "#22c55e20" : S.input, border: `1px solid ${copied ? "#22c55e50" : S.border}`,
       borderRadius: 6, padding: "4px 8px", cursor: "pointer", fontSize: 12,
       color: copied ? "#22c55e" : S.muted, display: "inline-flex", alignItems: "center", gap: 4,
       transition: "all 0.2s", whiteSpace: "nowrap",
@@ -473,7 +473,7 @@ function SectionHead({ children, copyText, copyLabel }) {
 function DescriptionWithVisibleTags({ text }) {
   const parts = String(text || "").split(/(<\/?p>)/gi);
   return (
-    <div style={{ fontSize: 13, color: "#c4c8d0", lineHeight: 1.6, fontFamily: S.font, whiteSpace: "pre-wrap" }}>
+    <div style={{ fontSize: 13, color: S.text, lineHeight: 1.6, fontFamily: S.font, whiteSpace: "pre-wrap" }}>
       {parts.map((part, idx) => {
         if (/^<\/?p>$/i.test(part)) {
           const isClosing = /^<\/p>$/i.test(part);
@@ -531,7 +531,7 @@ function ListingPreview({ listing }) {
         <SectionHead>Punkty kluczowe (Bullet Points)</SectionHead>
         {listing.bullets.map((b, i) => (
           <div key={i} style={{
-            padding: "8px 12px", marginBottom: 6, background: "#0d0e14", borderRadius: 6,
+            padding: "8px 12px", marginBottom: 6, background: S.card2, borderRadius: 6,
             borderLeft: `3px solid ${b.trim() ? S.accent : S.border}`,
             fontSize: 13, color: b.trim() ? S.text : "#3a3d45", lineHeight: 1.5, fontFamily: S.font,
             display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8,
@@ -553,7 +553,7 @@ function ListingPreview({ listing }) {
       {listing.backendKeywords && (
         <div>
           <SectionHead copyText={listing.backendKeywords} copyLabel="backend keywords">Słowa kluczowe backend (Search Terms)</SectionHead>
-          <div style={{ padding: 12, background: "#0d0e14", borderRadius: 8, fontSize: 12, color: "#a1a5ae", fontFamily: S.mono, wordBreak: "break-all", lineHeight: 1.6 }}>
+          <div style={{ padding: 12, background: S.card2, borderRadius: 8, fontSize: 12, color: S.muted, fontFamily: S.mono, wordBreak: "break-all", lineHeight: 1.6 }}>
             {listing.backendKeywords}
           </div>
           <div style={{ marginTop: 4 }}><CharBadge current={bBytes} max={250} label="znaków" /></div>
@@ -570,7 +570,7 @@ function ListingPreview({ listing }) {
               b.trim() && (
                 <div key={i} style={{
                   padding: "8px 12px",
-                  background: "#0d0e14",
+                  background: S.card2,
                   borderRadius: 6,
                   borderLeft: `3px solid ${S.accent}`,
                   fontSize: 13,
@@ -707,7 +707,7 @@ function CsvKeywordPicker({ keywords, mainKeyword, setMainKeyword, secondaryKeyw
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, fontFamily: S.mono }}>
               <thead>
-                <tr style={{ background: "#0d0e14" }}>
+                <tr style={{ background: S.card2 }}>
                   <th style={{ padding: "7px 8px", textAlign: "center", width: 32, borderBottom: `1px solid ${S.border}`, color: S.muted, fontSize: 11 }} title="Ustaw jako główne słowo kluczowe (Main Keyword)">⭐</th>
                   <th style={{ padding: "7px 8px", textAlign: "center", width: 32, borderBottom: `1px solid ${S.border}`, color: S.muted, fontSize: 11 }} title="Dodaj do Secondary Keywords">✓</th>
                   <SortTh col="keyword" label="Słowo kluczowe" />
@@ -764,7 +764,7 @@ function CsvKeywordPicker({ keywords, mainKeyword, setMainKeyword, secondaryKeyw
           {totalPages > 1 && (
             <div style={{ display: "flex", gap: 6, marginTop: 12, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
               <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
-                style={{ padding: "5px 10px", background: currentPage === 1 ? "#1e2028" : S.input, border: `1px solid ${S.border}`, borderRadius: 6, color: currentPage === 1 ? "#4b5563" : S.text, cursor: currentPage === 1 ? "default" : "pointer", fontSize: 11 }}>
+                style={{ padding: "5px 10px", background: currentPage === 1 ? "#eadfce" : S.input, border: `1px solid ${S.border}`, borderRadius: 6, color: currentPage === 1 ? S.dim : S.text, cursor: currentPage === 1 ? "default" : "pointer", fontSize: 11 }}>
                 ← Poprzednia
               </button>
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
@@ -774,7 +774,7 @@ function CsvKeywordPicker({ keywords, mainKeyword, setMainKeyword, secondaryKeyw
                 </button>
               ))}
               <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-                style={{ padding: "5px 10px", background: currentPage === totalPages ? "#1e2028" : S.input, border: `1px solid ${S.border}`, borderRadius: 6, color: currentPage === totalPages ? "#4b5563" : S.text, cursor: currentPage === totalPages ? "default" : "pointer", fontSize: 11 }}>
+                style={{ padding: "5px 10px", background: currentPage === totalPages ? "#eadfce" : S.input, border: `1px solid ${S.border}`, borderRadius: 6, color: currentPage === totalPages ? S.dim : S.text, cursor: currentPage === totalPages ? "default" : "pointer", fontSize: 11 }}>
                 Następna →
               </button>
             </div>
@@ -825,7 +825,7 @@ function HistoryPanel({ entries, onLoad, onDelete }) {
           const dateStr = date.toLocaleString("pl-PL", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
           return (
             <div key={entry.id} style={{
-              padding: "12px 14px", background: "#0d0e14", borderRadius: 10,
+              padding: "12px 14px", background: S.card2, borderRadius: 10,
               border: `1px solid ${S.border}`, display: "flex", gap: 12, alignItems: "center",
             }}>
               <div style={{ fontSize: 20, minWidth: 30 }}>{mp?.flags.join("") || "🌐"}</div>
@@ -839,13 +839,13 @@ function HistoryPanel({ entries, onLoad, onDelete }) {
               </div>
               <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                 <button onClick={() => onLoad(entry)} style={{
-                  padding: "6px 12px", background: "rgba(99,102,241,0.12)", border: `1px solid rgba(99,102,241,0.30)`,
+                  padding: "6px 12px", background: "rgba(197, 92, 31, 0.10)", border: `1px solid rgba(197, 92, 31, 0.26)`,
                   borderRadius: 6, color: S.accent, fontSize: 12, cursor: "pointer", fontWeight: 600, fontFamily: S.font,
                 }}>
                   Załaduj
                 </button>
                 <button onClick={() => onDelete(entry.id)} style={{
-                  padding: "6px 10px", background: "#1e2028", border: `1px solid ${S.border}`,
+                  padding: "6px 10px", background: S.input, border: `1px solid ${S.border}`,
                   borderRadius: 6, color: S.dim, fontSize: 12, cursor: "pointer", fontFamily: S.font,
                 }}>
                   ✕
@@ -887,7 +887,7 @@ function SettingsPanel({ provider, setProvider, model, setModel }) {
 
       {/* Provider toggle */}
       <div style={{ marginBottom: 16 }}>
-        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#c4c8d0", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: S.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
           Provider
         </label>
         <div style={{ display: "flex", gap: 8 }}>
@@ -898,7 +898,7 @@ function SettingsPanel({ provider, setProvider, model, setModel }) {
             <button key={p.id} onClick={() => switchProvider(p.id)} style={{
               padding: "10px 16px", borderRadius: 8, flex: 1,
               border: provider === p.id ? `2px solid ${S.accent}` : `1px solid ${S.border}`,
-              background: provider === p.id ? "rgba(99,102,241,0.12)" : S.input,
+              background: provider === p.id ? "rgba(197, 92, 31, 0.10)" : S.input,
               color: provider === p.id ? S.accent : S.muted,
               cursor: "pointer", fontSize: 13, fontFamily: S.font, textAlign: "left",
             }}>
@@ -911,7 +911,7 @@ function SettingsPanel({ provider, setProvider, model, setModel }) {
 
       {/* API Key */}
       <div style={{ marginBottom: 16 }}>
-        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#c4c8d0", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: S.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
           Klucz API
         </label>
         <div style={{
@@ -930,7 +930,7 @@ function SettingsPanel({ provider, setProvider, model, setModel }) {
 
       {/* Model selection */}
       <div>
-        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#c4c8d0", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: S.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
           Model
         </label>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -938,7 +938,7 @@ function SettingsPanel({ provider, setProvider, model, setModel }) {
             <button key={m.id} onClick={() => setModel(m.id)} style={{
               padding: "8px 14px", borderRadius: 8,
               border: model === m.id ? `2px solid ${S.accent}` : `1px solid ${S.border}`,
-              background: model === m.id ? "rgba(99,102,241,0.12)" : S.input,
+              background: model === m.id ? "rgba(197, 92, 31, 0.10)" : S.input,
               color: model === m.id ? S.accent : S.muted,
               cursor: "pointer", fontSize: 12, fontFamily: S.font, textAlign: "left",
             }}>
@@ -1884,7 +1884,7 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
 
   return (
     <>
-    <Card style={{ background: "linear-gradient(135deg, #12141c 0%, #181b26 100%)", marginBottom: 24 }}>
+    <Card style={{ background: "linear-gradient(135deg, rgba(255,253,249,0.96) 0%, rgba(255,240,222,0.88) 100%)", marginBottom: 24 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, justifyContent: "space-between", flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{
@@ -1900,8 +1900,8 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <span style={{
             display: "inline-flex", alignItems: "center", padding: "5px 10px", borderRadius: 999,
-            border: `1px solid ${S.accent}66`, background: "rgba(99,102,241,0.12)",
-            color: S.accentLight, fontSize: 11, fontWeight: 800,
+            border: `1px solid rgba(197, 92, 31, 0.26)`, background: "rgba(197, 92, 31, 0.10)",
+            color: S.accentSecondary, fontSize: 11, fontWeight: 800,
           }}>
             {getProviderLabel(provider)}
           </span>
@@ -1943,8 +1943,8 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
       </div>
 
       {/* File Uploads */}
-      <div style={{ marginBottom: 16, padding: 16, background: "#0d0e14", borderRadius: 12, border: `1px dashed ${S.border}` }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: "#c4c8d0", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+      <div style={{ marginBottom: 16, padding: 16, background: S.card2, borderRadius: 12, border: `1px dashed ${S.border}` }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: S.muted, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>
           Załączniki (opcjonalnie)
         </div>
 
@@ -1988,8 +1988,8 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
             )}
             {uploadedFiles.map((f, i) => (
               <span key={i} style={{
-                padding: "4px 10px", borderRadius: 6, background: "#1e2028", border: "1px solid #2a2d35",
-                fontSize: 11, color: "#c4c8d0", display: "flex", alignItems: "center", gap: 4,
+                padding: "4px 10px", borderRadius: 6, background: S.input, border: `1px solid ${S.border}`,
+                fontSize: 11, color: S.muted, display: "flex", alignItems: "center", gap: 4,
               }}>
                 {f.type === "image" ? "🖼️" : "📄"} {f.name.length > 25 ? f.name.slice(0, 22) + "..." : f.name}
                 <button onClick={() => removeFile(i)} style={{
@@ -2304,7 +2304,7 @@ export default function App() {
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: ${S.bg}; }
         ::-webkit-scrollbar-thumb { background: ${S.border}; border-radius: 3px; }
-        input:focus, textarea:focus { border-color: ${S.accent} !important; box-shadow: 0 0 0 2px rgba(99,102,241,0.20); }
+        input:focus, textarea:focus { border-color: ${S.accent} !important; box-shadow: 0 0 0 2px rgba(197, 92, 31, 0.14); }
       `}</style>
 
       <div style={{ padding: "20px 28px", maxWidth: 960, margin: "0 auto" }}>
