@@ -1108,6 +1108,14 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, setProvid
         max_tokens: 8192,
         ...(isGemma ? {} : { response_format: { type: "json_object" } }),
       };
+    } else if (providerOverride === "nvidia") {
+      body = {
+        provider: providerOverride,
+        model: modelOverride,
+        messages: messages,
+        temperature: 0.5,
+        max_tokens: 2500,
+      };
     } else {
       body = {
         provider: providerOverride,
@@ -1120,7 +1128,8 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, setProvid
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 90_000); // 90s timeout
+    const timeoutMs = providerOverride === "nvidia" ? 45_000 : 90_000;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     let res;
     try {
       res = await fetch("/api/ai", {
@@ -1130,7 +1139,10 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, setProvid
         signal: controller.signal,
       });
     } catch (err) {
-      if (err.name === "AbortError") throw new Error("Przekroczono limit czasu (90s). Sprawdź połączenie lub spróbuj z krótszym opisem produktu.");
+      if (err.name === "AbortError") {
+        const seconds = Math.round(timeoutMs / 1000);
+        throw new Error(`Przekroczono limit czasu (${seconds}s) dla ${getProviderLabel(providerOverride)}. Spróbuj inny model albo wróć na Gemini/Groq.`);
+      }
       throw err;
     } finally {
       clearTimeout(timeoutId);
