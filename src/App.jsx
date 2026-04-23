@@ -26,8 +26,6 @@ const GEMINI_MODELS = [
   { id: "gemma-3-27b-it", name: "Gemma 3 27B", desc: "14 400 req/dzień — open source, bez zdjęć" },
 ];
 
-const AMAZON_CALCULATOR_URL = "https://kalkulator-ceny-sprzedazy-fbm.pages.dev/";
-
 function getProviderLabel(provider) {
   return provider === "gemini" ? "Gemini" : "Groq";
 }
@@ -136,7 +134,8 @@ function writeStoredValue(key, value) {
 }
 
 function getInitialProvider() {
-  return readStoredValue("amz-provider", "gemini");
+  const provider = readStoredValue("amz-provider", "gemini");
+  return provider === "groq" || provider === "gemini" ? provider : "gemini";
 }
 
 function getInitialModel() {
@@ -190,6 +189,42 @@ const S = {
   border: "rgba(84, 61, 28, 0.16)", text: "#261b12", muted: "#6f6258", dim: "#8c7b6b",
   accent: "#c55c1f", accentLight: "#f59e0b", accentSecondary: "#8e3f12",
 };
+
+const FBM_DIGITAL_SERVICES_FEE_RATE = 0.03;
+const FBM_DIGITAL_SERVICES_FEE_MARKETS = new Set(["FR", "IT", "ES"]);
+const FBM_UPS_FUEL_MARKETS = new Set(["UK", "IE", "SE"]);
+const FBM_WEIGHT_OPTIONS = [1, 2, 3, 5, 10, 15, 20, 25, 30, 40];
+
+const FBM_VAT_RATES = {
+  DE: 0.19, FR: 0.2, IT: 0.22, ES: 0.21, NL: 0.21,
+  BE: 0.21, IE: 0.23, UK: 0.2, PL: 0.23, SE: 0.25,
+};
+
+const FBM_SHIPPING_RATES = {
+  FR: { currency: "EUR", rates: { 1: 5.65, 2: 5.87, 3: 6.31, 5: 9.2, 10: 11.82, 15: 12.85, 25: 12.85, 30: 15.75, 40: 16.54 } },
+  ES: { currency: "EUR", rates: { 1: 5.99, 2: 5.99, 3: 6.81, 5: 8.1, 10: 14.73, 15: 19.94, 25: 20.88, 30: 21.34, 40: 29.14 } },
+  NL: { currency: "EUR", rates: { 1: 5, 2: 5, 3: 5, 5: 8.07, 10: 8.44, 15: 10.46, 25: 11.8, 30: 12.38, 40: 15.87 } },
+  DE: { currency: "EUR", rates: { 1: 3.8, 2: 4.1, 3: 4.1, 5: 5.6, 10: 5.89, 15: 7.18, 25: 7.18, 30: 7.18, 40: 7.18 } },
+  SE: { currency: "PLN", rates: { 1: 20.96, 3: 20.96, 5: 24.24, 10: 31.34, 20: 40.4, 30: 46.33 } },
+  IT: { currency: "EUR", rates: { 1: 6.21, 2: 6.21, 3: 6.35, 5: 10.41, 10: 10.68, 15: 12.37, 25: 12.37, 30: 12.37, 40: 19.49 } },
+  BE: { currency: "EUR", rates: { 1: 4.76, 2: 4.76, 3: 4.76, 5: 8.07, 10: 8.44, 15: 10.46, 25: 11.8, 30: 12.38, 40: 15.87 } },
+  IE: { currency: "PLN", rates: { 1: 28.36, 3: 28.36, 5: 28.36, 10: 32.26, 20: 40.77, 30: 47.4 } },
+  UK: { currency: "PLN", rates: { 1: 55.46, 3: 55.46, 5: 55.46, 10: 65.18, 20: 79.06, 30: 90.72 } },
+  PL: { currency: "PLN", rates: { 1: 5, 2: 5, 3: 5, 5: 5, 10: 5, 15: 5, 20: 5, 25: 5, 30: 5, 40: 5 } },
+};
+
+const FBM_MARKETS = [
+  { code: "DE", name: "Niemcy", currency: "EUR", courier: "GLS" },
+  { code: "FR", name: "Francja", currency: "EUR", courier: "GLS" },
+  { code: "IT", name: "Włochy", currency: "EUR", courier: "GLS" },
+  { code: "ES", name: "Hiszpania", currency: "EUR", courier: "GLS" },
+  { code: "NL", name: "Niderlandy", currency: "EUR", courier: "GLS" },
+  { code: "BE", name: "Belgia", currency: "EUR", courier: "GLS" },
+  { code: "IE", name: "Irlandia", currency: "EUR", courier: "UPS" },
+  { code: "UK", name: "Wielka Brytania", currency: "GBP", courier: "UPS" },
+  { code: "PL", name: "Polska", currency: "PLN", courier: "InPost (Easy Ship)" },
+  { code: "SE", name: "Szwecja", currency: "SEK", courier: "UPS" },
+];
 
 function CharBadge({ current, max, label }) {
   const pct = (current / max) * 100;
@@ -2172,7 +2207,256 @@ function ManualEditor({ listing, setListing }) {
    GŁÓWNA APLIKACJA
    ═══════════════════════════════════════════ */
 
-function ToolHub({ onOpenOptimizer }) {
+function parseFbmNumber(value, fallback = 0) {
+  const parsed = Number.parseFloat(String(value ?? "").replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function formatFbmCurrency(value, currency) {
+  if (!Number.isFinite(value)) return "Brak wyniku";
+  return `${new Intl.NumberFormat("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)} ${currency}`;
+}
+
+function formatFbmPercent(value) {
+  if (!Number.isFinite(value)) return "Brak wyniku";
+  return `${(value * 100).toFixed(2).replace(".", ",")}%`;
+}
+
+function roundFbmPrice(value) {
+  if (!Number.isFinite(value)) return Number.NaN;
+  const floor = Math.floor(value);
+  return [floor + 0.49, floor + 0.99, floor + 1.49, floor + 1.99].find(candidate => candidate >= value - Number.EPSILON) ?? Number.NaN;
+}
+
+function FbmCalculator() {
+  const [copied, setCopied] = useState("");
+  const [form, setForm] = useState({
+    calculationMode: "profit",
+    targetValue: "10",
+    weightTier: "1",
+    productCostPln: "35",
+    packingCostPln: "3,75",
+    amazonFeeRate: "15",
+    otherCostPln: "0",
+    eurRate: "4,2500",
+    gbpRate: "4,9000",
+    sekRate: "0,3900",
+    upsFuelSurcharge: "31,75",
+    upsDeliveryFeePln: "1,15",
+  });
+
+  const update = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
+  const number = (key, fallback = 0) => parseFbmNumber(form[key], fallback);
+
+  const convertPlnToCurrency = (plnValue, currency) => {
+    if (currency === "PLN") return plnValue;
+    if (currency === "EUR") return plnValue / number("eurRate", 4.25);
+    if (currency === "GBP") return plnValue / number("gbpRate", 4.9);
+    if (currency === "SEK") return plnValue / number("sekRate", 0.39);
+    return plnValue;
+  };
+
+  const convertCurrency = (value, fromCurrency, toCurrency) => {
+    if (fromCurrency === toCurrency) return value;
+    let plnValue = value;
+    if (fromCurrency === "EUR") plnValue = value * number("eurRate", 4.25);
+    if (fromCurrency === "GBP") plnValue = value * number("gbpRate", 4.9);
+    if (fromCurrency === "SEK") plnValue = value * number("sekRate", 0.39);
+    return convertPlnToCurrency(plnValue, toCurrency);
+  };
+
+  const resolveShippingRate = (marketCode, weight) => {
+    const rateConfig = FBM_SHIPPING_RATES[marketCode];
+    const matchedWeight = Object.keys(rateConfig.rates).map(Number).sort((a, b) => a - b).find(tier => weight <= tier);
+    if (matchedWeight === undefined) return { matchedWeight: null, amount: Number.NaN, currency: rateConfig.currency };
+
+    let amount = rateConfig.rates[matchedWeight];
+    if (FBM_UPS_FUEL_MARKETS.has(marketCode)) {
+      amount += amount * (number("upsFuelSurcharge", 31.75) / 100) + number("upsDeliveryFeePln", 1.15);
+    }
+    return { matchedWeight, amount, currency: rateConfig.currency };
+  };
+
+  const result = useMemo(() => {
+    const baseCostPln = number("productCostPln") + number("packingCostPln") + number("otherCostPln");
+    const weightTier = number("weightTier", 1);
+    const amazonFeeRate = number("amazonFeeRate", 15) / 100;
+    const targetValue = number("targetValue", 10);
+    const marginRate = form.calculationMode === "margin" ? targetValue / 100 : 0;
+
+    const rows = FBM_MARKETS.map(market => {
+      const vatRate = FBM_VAT_RATES[market.code];
+      const shipping = resolveShippingRate(market.code, weightTier);
+      const fallback = {
+        ...market, vatRate, shippingTier: shipping.matchedWeight,
+        shippingAmount: Number.NaN, totalCost: Number.NaN, grossPrice: Number.NaN,
+        netPrice: Number.NaN, vatAmount: Number.NaN, amazonFee: Number.NaN,
+        profit: Number.NaN, margin: Number.NaN,
+      };
+      if (!Number.isFinite(shipping.amount)) return fallback;
+
+      const baseCost = convertPlnToCurrency(baseCostPln, market.currency);
+      const shippingAmount = convertCurrency(shipping.amount, shipping.currency, market.currency);
+      const totalCost = baseCost + shippingAmount;
+      const digitalFeeRate = FBM_DIGITAL_SERVICES_FEE_MARKETS.has(market.code) ? amazonFeeRate * FBM_DIGITAL_SERVICES_FEE_RATE : 0;
+      const totalFeeRate = amazonFeeRate + digitalFeeRate;
+      const denominator = form.calculationMode === "profit"
+        ? (1 / (1 + vatRate)) - totalFeeRate
+        : ((1 - marginRate) / (1 + vatRate)) - totalFeeRate;
+
+      if (denominator <= 0) return { ...fallback, shippingAmount, totalCost };
+
+      const targetProfit = form.calculationMode === "profit" ? convertCurrency(targetValue, "EUR", market.currency) : 0;
+      const grossPrice = roundFbmPrice((totalCost + targetProfit) / denominator);
+      const netPrice = grossPrice / (1 + vatRate);
+      const vatAmount = grossPrice - netPrice;
+      const amazonFee = grossPrice * totalFeeRate;
+      const profit = netPrice - amazonFee - totalCost;
+      const margin = grossPrice === 0 ? 0 : profit / grossPrice;
+
+      return { ...market, vatRate, shippingTier: shipping.matchedWeight, shippingAmount, totalCost, grossPrice, netPrice, vatAmount, amazonFee, profit, margin };
+    });
+
+    return { baseCostPln, weightTier, rows };
+  }, [form]);
+
+  const copyPrice = async (row) => {
+    const value = row.code === "IE" || row.code === "UK" ? row.grossPrice.toFixed(2) : row.grossPrice.toFixed(2).replace(".", ",");
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(row.code);
+      setTimeout(() => setCopied(""), 1200);
+    } catch {
+      setCopied("error");
+      setTimeout(() => setCopied(""), 1200);
+    }
+  };
+
+  const inputStyle = {
+    width: "100%", minHeight: 40, padding: "10px 12px", borderRadius: 8,
+    border: `1px solid ${S.border}`, background: S.input, color: S.text,
+    fontFamily: S.font, fontSize: 13, outline: "none",
+  };
+  const labelStyle = { display: "block", fontSize: 11, color: S.muted, fontWeight: 800, marginBottom: 6 };
+  const thStyle = { padding: "10px 8px", textAlign: "left", color: S.accentSecondary, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${S.border}` };
+  const tdStyle = { padding: "10px 8px", borderBottom: `1px solid rgba(84,61,28,0.10)`, fontSize: 13, verticalAlign: "middle" };
+
+  const renderInput = (label, valueKey) => (
+    <label>
+      <span style={labelStyle}>{label}</span>
+      <input value={form[valueKey]} onChange={e => update(valueKey, e.target.value)} style={inputStyle} />
+    </label>
+  );
+
+  return (
+    <div style={{ animation: "fadeIn 0.3s ease" }}>
+      <div style={{ marginBottom: 20, padding: "26px 0 12px", display: "grid", gap: 12 }}>
+        <SectionLabel>Kalkulator FBM</SectionLabel>
+        <h2 style={{ margin: 0, color: S.text, fontSize: 28, lineHeight: 1.1 }}>Kalkulator ceny sprzedaży FBM</h2>
+        <div style={{ maxWidth: 720, color: S.muted, fontSize: 14, lineHeight: 1.6 }}>
+          Jeden widok dla cen brutto, kosztów wysyłki, prowizji Amazon, zysku i marży na marketplace EU.
+        </div>
+      </div>
+
+      <Card style={{ padding: 20, marginBottom: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(260px, 1fr)", gap: 18 }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
+              <h3 style={{ margin: 0, color: S.text, fontSize: 16 }}>Parametry</h3>
+              <span style={{ color: S.dim, fontSize: 12 }}>Jedna zmiana aktualizuje wszystkie markety</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
+              <label>
+                <span style={labelStyle}>Tryb kalkulacji</span>
+                <select value={form.calculationMode} onChange={e => update("calculationMode", e.target.value)} style={inputStyle}>
+                  <option value="profit">Docelowy zysk kwotowy</option>
+                  <option value="margin">Docelowa marża procentowa</option>
+                </select>
+              </label>
+              {renderInput(form.calculationMode === "profit" ? "Docelowy zysk (EUR)" : "Docelowa marża (%)", "targetValue")}
+              <label>
+                <span style={labelStyle}>Waga przesyłki</span>
+                <select value={form.weightTier} onChange={e => update("weightTier", e.target.value)} style={inputStyle}>
+                  {FBM_WEIGHT_OPTIONS.map(weight => <option key={weight} value={weight}>do {weight} kg</option>)}
+                </select>
+              </label>
+              {renderInput("Koszt produktu (PLN)", "productCostPln")}
+              {renderInput("Koszt pakowania (PLN)", "packingCostPln")}
+              {renderInput("Prowizja Amazon (%)", "amazonFeeRate")}
+              {renderInput("Koszty inne (PLN)", "otherCostPln")}
+              {renderInput("Kurs PLN -> EUR", "eurRate")}
+              {renderInput("Kurs PLN -> GBP", "gbpRate")}
+              {renderInput("Kurs PLN -> SEK", "sekRate")}
+              {renderInput("Opłata paliwowa UPS (%)", "upsFuelSurcharge")}
+              {renderInput("Doręczenie UPS (PLN)", "upsDeliveryFeePln")}
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gap: 10, alignSelf: "start" }}>
+            {[
+              ["Koszt bazowy", formatFbmCurrency(result.baseCostPln, "PLN")],
+              ["Wybrana waga", `do ${result.weightTier} kg`],
+              ["Cel kalkulacji", form.calculationMode === "profit" ? `${formatFbmCurrency(number("targetValue", 10), "EUR")} zysku` : `${number("targetValue", 25).toFixed(2).replace(".", ",")}% marży`],
+            ].map(([label, value]) => (
+              <div key={label} style={{ padding: 14, borderRadius: 12, background: S.card2, border: `1px solid ${S.border}` }}>
+                <div style={{ fontSize: 11, color: S.dim, marginBottom: 4 }}>{label}</div>
+                <div style={{ fontWeight: 800, color: S.text }}>{value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Card>
+
+      <Card style={{ padding: 0, overflow: "hidden" }}>
+        <div style={{ padding: "18px 20px 8px", display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+          <h3 style={{ margin: 0, color: S.text, fontSize: 16 }}>Wszystkie markety</h3>
+          <span style={{ color: S.dim, fontSize: 12 }}>Cena brutto jest liczona po odjęciu VAT, prowizji i kosztów.</span>
+        </div>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
+            <thead style={{ background: "rgba(197, 92, 31, 0.08)" }}>
+              <tr>
+                {["Market", "Kurier", "Waluta", "VAT", "Wysyłka", "Koszt całkowity", "Cena netto", "VAT w cenie", "Cena brutto", "Prowizja Amazon", "Zysk", "Marża"].map(head => (
+                  <th key={head} style={thStyle}>{head}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {result.rows.map(row => (
+                <tr key={row.code}>
+                  <td style={tdStyle}><strong>{row.name}</strong><div style={{ color: S.dim, fontSize: 11 }}>{row.code}</div></td>
+                  <td style={tdStyle}>{row.courier}</td>
+                  <td style={tdStyle}>{row.currency}</td>
+                  <td style={tdStyle}>{formatFbmPercent(row.vatRate)}</td>
+                  <td style={tdStyle}>{formatFbmCurrency(row.shippingAmount, row.currency)} <span style={{ color: S.dim }}>(do {row.shippingTier || "-"} kg)</span></td>
+                  <td style={tdStyle}>{formatFbmCurrency(row.totalCost, row.currency)}</td>
+                  <td style={tdStyle}>{formatFbmCurrency(row.netPrice, row.currency)}</td>
+                  <td style={tdStyle}>{formatFbmCurrency(row.vatAmount, row.currency)}</td>
+                  <td style={{ ...tdStyle, background: "rgba(197, 92, 31, 0.09)", fontWeight: 900, color: S.accentSecondary }}>
+                    <span>{formatFbmCurrency(row.grossPrice, row.currency)}</span>
+                    {Number.isFinite(row.grossPrice) && (
+                      <button type="button" onClick={() => copyPrice(row)} style={{
+                        marginLeft: 8, border: `1px solid ${S.border}`, borderRadius: 7, background: S.input,
+                        color: S.accentSecondary, padding: "4px 7px", fontSize: 10, fontWeight: 800, cursor: "pointer",
+                      }}>
+                        {copied === row.code ? "OK" : "Copy"}
+                      </button>
+                    )}
+                  </td>
+                  <td style={tdStyle}>{formatFbmCurrency(row.amazonFee, row.currency)}</td>
+                  <td style={{ ...tdStyle, color: row.profit >= 0 ? "#16845b" : "#b91c1c", fontWeight: 800 }}>{formatFbmCurrency(row.profit, row.currency)}</td>
+                  <td style={{ ...tdStyle, color: row.margin >= 0 ? "#16845b" : "#b91c1c", fontWeight: 800 }}>{formatFbmPercent(row.margin)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function ToolHub({ onOpenOptimizer, onOpenCalculator }) {
   const tools = [
     {
       title: "Amazon Optimizer",
@@ -2186,7 +2470,7 @@ function ToolHub({ onOpenOptimizer }) {
       tag: "Cena sprzedaży",
       text: "Kalkulator ceny, kosztów i marży dla sprzedaży Amazon FBM.",
       action: "Otwórz kalkulator",
-      href: AMAZON_CALCULATOR_URL,
+      onClick: onOpenCalculator,
     },
   ];
 
@@ -2219,16 +2503,6 @@ function ToolHub({ onOpenOptimizer }) {
               </div>
             </>
           );
-
-          if (tool.href) {
-            return (
-              <a key={tool.title} href={tool.href} style={{ textDecoration: "none" }}>
-                <Card style={{ height: "100%", cursor: "pointer", background: S.card2 }}>
-                  {content}
-                </Card>
-              </a>
-            );
-          }
 
           return (
             <button key={tool.title} type="button" onClick={tool.onClick} style={{ padding: 0, border: 0, background: "transparent", textAlign: "left", fontFamily: S.font, cursor: "pointer" }}>
@@ -2325,14 +2599,17 @@ export default function App() {
         <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
           <TabBtn active={activeTool === "home"} onClick={() => setActiveTool("home")} icon="⌂">Narzędzia</TabBtn>
           <TabBtn active={activeTool === "optimizer"} onClick={() => setActiveTool("optimizer")} icon="⚡">Amazon Optimizer</TabBtn>
-          <TabBtn active={false} onClick={() => { window.location.href = AMAZON_CALCULATOR_URL; }} icon="↗">Kalkulator FBM</TabBtn>
+          <TabBtn active={activeTool === "calculator"} onClick={() => setActiveTool("calculator")} icon="↗">Kalkulator FBM</TabBtn>
         </div>
 
         {activeTool === "home" && (
           <ToolHub
             onOpenOptimizer={() => setActiveTool("optimizer")}
+            onOpenCalculator={() => setActiveTool("calculator")}
           />
         )}
+
+        {activeTool === "calculator" && <FbmCalculator />}
 
         <div style={{ display: activeTool === "optimizer" ? "" : "none" }}>
         {/* MARKETPLACE */}
