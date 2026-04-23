@@ -38,18 +38,6 @@ export async function onRequestPost(context) {
         max_tokens,
         ...(response_format ? { response_format } : {}),
       };
-    } else if (provider === "nvidia") {
-      apiKey = env.NVIDIA_API_KEY;
-      if (!apiKey) return json({ error: { message: "Missing NVIDIA_API_KEY secret" } }, 500);
-
-      url = "https://integrate.api.nvidia.com/v1/chat/completions";
-      body = {
-        model,
-        messages,
-        temperature,
-        max_tokens,
-        ...(response_format ? { response_format } : {}),
-      };
     } else {
       return json({ error: { message: "Unsupported provider" } }, 400);
     }

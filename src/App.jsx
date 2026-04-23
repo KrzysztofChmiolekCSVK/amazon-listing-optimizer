@@ -26,33 +26,14 @@ const GEMINI_MODELS = [
   { id: "gemma-3-27b-it", name: "Gemma 3 27B", desc: "14 400 req/dzień — open source, bez zdjęć" },
 ];
 
-const NVIDIA_MODELS = [
-  { id: "minimaxai/minimax-m2.7", name: "MiniMax M2.7", desc: "Nowy model ogólny — dobry do testów listingów" },
-  { id: "z-ai/glm5.1", name: "GLM 5.1", desc: "Silny model ogólny, warto porównać jakość językową" },
-  { id: "deepseek-ai/deepseek-v3.2", name: "DeepSeek V3.2", desc: "Mocny model instrukcyjny i analityczny" },
-  { id: "openai/gpt-oss-120b", name: "GPT-OSS 120B", desc: "Duży model open-weight przez NVIDIA NIM" },
-  { id: "qwen/qwen3-next-80b-a3b-instruct", name: "Qwen3 Next 80B", desc: "Dobry balans jakości i instrukcji" },
-  { id: "moonshotai/kimi-k2-instruct", name: "Kimi K2", desc: "Model długi/ogólny do generowania treści" },
-  { id: "nvidia/nemotron-3-super-120b-a12b", name: "Nemotron 3 Super 120B", desc: "Model NVIDIA do zadań ogólnych" },
-  { id: "sarvamai/sarvam-m", name: "Sarvam-M", desc: "Lekki model do eksperymentów i porównań" },
-];
-
 const AMAZON_CALCULATOR_URL = "https://kalkulator-ceny-sprzedazy-fbm.pages.dev/";
 
 function getProviderLabel(provider) {
-  if (provider === "gemini") return "Gemini";
-  if (provider === "nvidia") return "NVIDIA";
-  return "Groq";
-}
-
-function getModelsForProvider(provider) {
-  if (provider === "gemini") return GEMINI_MODELS;
-  if (provider === "nvidia") return NVIDIA_MODELS;
-  return GROQ_MODELS;
+  return provider === "gemini" ? "Gemini" : "Groq";
 }
 
 function getModelDisplayName(provider, modelId) {
-  const models = getModelsForProvider(provider);
+  const models = provider === "gemini" ? GEMINI_MODELS : GROQ_MODELS;
   return models.find(m => m.id === modelId)?.name || modelId || "";
 }
 
@@ -161,7 +142,7 @@ function getInitialProvider() {
 function getInitialModel() {
   const provider = getInitialProvider();
   const storedModel = readStoredValue("amz-model", "");
-  const models = getModelsForProvider(provider);
+  const models = provider === "gemini" ? GEMINI_MODELS : GROQ_MODELS;
   return models.some(m => m.id === storedModel) ? storedModel : models[0].id;
 }
 
@@ -897,13 +878,14 @@ function HistoryPanel({ entries, onLoad, onDelete }) {
    ═══════════════════════════════════════════ */
 
 function SettingsPanel({ provider, setProvider, model, setModel }) {
-  const models = getModelsForProvider(provider);
+  const models = provider === "gemini" ? GEMINI_MODELS : GROQ_MODELS;
 
   function switchProvider(p) {
     setProvider(p);
-    const nextModels = getModelsForProvider(p);
-    if (!nextModels.find(m => m.id === model)) {
-      setModel(nextModels[0].id);
+    if (p === "gemini" && !GEMINI_MODELS.find(m => m.id === model)) {
+      setModel("gemini-3.1-flash-lite-preview");
+    } else if (p === "groq" && !GROQ_MODELS.find(m => m.id === model)) {
+      setModel("meta-llama/llama-4-scout-17b-16e-instruct");
     }
   }
 
@@ -926,7 +908,6 @@ function SettingsPanel({ provider, setProvider, model, setModel }) {
           {[
             { id: "groq", name: "Groq", desc: "Llama 4, Qwen, GPT-OSS", icon: "⚡" },
             { id: "gemini", name: "Google Gemini", desc: "Gemini 3.1 Flash Lite / Gemma 3", icon: "💎" },
-            { id: "nvidia", name: "NVIDIA NIM", desc: "MiniMax, GLM, DeepSeek, Nemotron, GPT-OSS", icon: "▣" },
           ].map(p => (
             <button key={p.id} onClick={() => switchProvider(p.id)} style={{
               padding: "10px 16px", borderRadius: 8, flex: 1,
@@ -951,12 +932,13 @@ function SettingsPanel({ provider, setProvider, model, setModel }) {
           padding: "12px 14px", background: S.input, border: `1px solid ${S.border}`,
           borderRadius: 8, color: S.muted, fontSize: 13, lineHeight: 1.5,
         }}>
-          Klucze są używane po stronie Cloudflare Function z sekretów GEMINI_API_KEY, GROQ_API_KEY i NVIDIA_API_KEY.
+          Klucze są używane po stronie Cloudflare Function z sekretów GEMINI_API_KEY i GROQ_API_KEY.
         </div>
         <div style={{ fontSize: 11, color: S.dim, marginTop: 4 }}>
-          {provider === "gemini" && <>Darmowy klucz z <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener" style={{ color: S.accent, textDecoration: "none" }}>aistudio.google.com/api-keys</a></>}
-          {provider === "groq" && <>Darmowy klucz z <a href="https://console.groq.com/keys" target="_blank" rel="noopener" style={{ color: S.accent, textDecoration: "none" }}>console.groq.com/keys</a></>}
-          {provider === "nvidia" && <>Klucz z <a href="https://build.nvidia.com/models" target="_blank" rel="noopener" style={{ color: S.accent, textDecoration: "none" }}>build.nvidia.com/models</a></>}
+          {provider === "gemini"
+            ? <>Darmowy klucz z <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener" style={{ color: S.accent, textDecoration: "none" }}>aistudio.google.com/api-keys</a></>
+            : <>Darmowy klucz z <a href="https://console.groq.com/keys" target="_blank" rel="noopener" style={{ color: S.accent, textDecoration: "none" }}>console.groq.com/keys</a></>
+          }
         </div>
       </div>
 
@@ -1108,14 +1090,6 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, setProvid
         max_tokens: 8192,
         ...(isGemma ? {} : { response_format: { type: "json_object" } }),
       };
-    } else if (providerOverride === "nvidia") {
-      body = {
-        provider: providerOverride,
-        model: modelOverride,
-        messages: messages,
-        temperature: 0.5,
-        max_tokens: 2500,
-      };
     } else {
       body = {
         provider: providerOverride,
@@ -1128,8 +1102,7 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, setProvid
     }
 
     const controller = new AbortController();
-    const timeoutMs = providerOverride === "nvidia" ? 45_000 : 90_000;
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const timeoutId = setTimeout(() => controller.abort(), 90_000); // 90s timeout
     let res;
     try {
       res = await fetch("/api/ai", {
@@ -1139,10 +1112,7 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, setProvid
         signal: controller.signal,
       });
     } catch (err) {
-      if (err.name === "AbortError") {
-        const seconds = Math.round(timeoutMs / 1000);
-        throw new Error(`Przekroczono limit czasu (${seconds}s) dla ${getProviderLabel(providerOverride)}. Spróbuj inny model albo wróć na Gemini/Groq.`);
-      }
+      if (err.name === "AbortError") throw new Error("Przekroczono limit czasu (90s). Sprawdź połączenie lub spróbuj z krótszym opisem produktu.");
       throw err;
     } finally {
       clearTimeout(timeoutId);
@@ -2252,7 +2222,7 @@ function ToolHub({ onOpenOptimizer }) {
 
           if (tool.href) {
             return (
-              <a key={tool.title} href={tool.href} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+              <a key={tool.title} href={tool.href} style={{ textDecoration: "none" }}>
                 <Card style={{ height: "100%", cursor: "pointer", background: S.card2 }}>
                   {content}
                 </Card>
