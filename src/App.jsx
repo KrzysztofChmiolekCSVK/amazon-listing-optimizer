@@ -2235,14 +2235,14 @@ function FbmCalculator() {
     targetValue: "10",
     weightTier: "1",
     productCostPln: "35",
-    packingCostPln: "3,75",
+    packingCostPln: "3.75",
     amazonFeeRate: "15",
     otherCostPln: "0",
-    eurRate: "4,2500",
-    gbpRate: "4,9000",
-    sekRate: "0,3900",
-    upsFuelSurcharge: "32,50",
-    upsDeliveryFeePln: "1,15",
+    eurRate: "4.2500",
+    gbpRate: "4.9000",
+    sekRate: "0.3900",
+    upsFuelSurcharge: "32.50",
+    upsDeliveryFeePln: "1.15",
   });
 
   const update = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
@@ -2333,35 +2333,57 @@ function FbmCalculator() {
   };
 
   const inputStyle = {
-    width: "100%", minHeight: 40, padding: "10px 12px", borderRadius: 8,
+    width: "100%", minHeight: 36, padding: "8px 10px", borderRadius: 8,
     border: `1px solid ${S.border}`, background: S.input, color: S.text,
     fontFamily: S.font, fontSize: 13, outline: "none",
   };
-  const labelStyle = { display: "block", fontSize: 11, color: S.muted, fontWeight: 800, marginBottom: 6 };
-  const thStyle = { padding: "9px 7px", textAlign: "left", color: S.accentSecondary, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${S.border}` };
-  const tdStyle = { padding: "9px 7px", borderBottom: `1px solid rgba(84,61,28,0.10)`, fontSize: 12, verticalAlign: "middle" };
+  const activeInputStyle = {
+    ...inputStyle,
+    border: "1px solid rgba(197, 92, 31, 0.34)",
+    background: "rgba(255, 244, 231, 0.96)",
+  };
+  const labelStyle = { display: "block", fontSize: 10, color: S.muted, fontWeight: 800, marginBottom: 4 };
+  const activeLabelStyle = { ...labelStyle, color: S.accentSecondary };
+  const thStyle = { padding: "7px 7px", textAlign: "left", color: S.accentSecondary, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${S.border}` };
+  const tdStyle = { padding: "7px 7px", borderBottom: `1px solid rgba(84,61,28,0.10)`, fontSize: 12, verticalAlign: "middle" };
+  const pillStyle = {
+    padding: "5px 10px", borderRadius: 999, background: S.input,
+    border: `1px solid ${S.border}`, color: S.muted, fontSize: 11, fontWeight: 700,
+  };
 
-  const renderInput = (label, valueKey, labelNode) => (
+  const renderInput = (label, valueKey, labelNode, highlighted = false, step = "0.01") => (
     <label>
-      <span style={labelStyle}>{labelNode || label}</span>
-      <input value={form[valueKey]} onChange={e => update(valueKey, e.target.value)} style={inputStyle} />
+      <span style={highlighted ? activeLabelStyle : labelStyle}>{labelNode || label}</span>
+      <input type="number" step={step} value={form[valueKey]} onChange={e => update(valueKey, e.target.value)} style={highlighted ? activeInputStyle : inputStyle} />
     </label>
   );
 
   return (
     <div style={{ animation: "fadeIn 0.3s ease" }}>
-      <div style={{ marginBottom: 20, padding: "26px 0 12px", display: "grid", gap: 12 }}>
-        <SectionLabel>Kalkulator FBM</SectionLabel>
-        <h2 style={{ margin: 0, color: S.text, fontSize: 28, lineHeight: 1.1 }}>Kalkulator ceny sprzedaży FBM</h2>
-        <div style={{ maxWidth: 960, color: S.muted, fontSize: 14, lineHeight: 1.6 }}>
-          Jeden widok dla cen brutto, kosztów wysyłki, prowizji Amazon, zysku i marży na marketplace EU.
+      <div style={{ marginBottom: 12, padding: "10px 0 8px", display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(320px, 560px)", gap: 24, alignItems: "start" }}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <SectionLabel>Kalkulator FBM</SectionLabel>
+          <h2 style={{ margin: 0, color: S.text, fontSize: 28, lineHeight: 1.08 }}>Kalkulator ceny sprzedaży FBM</h2>
+          <div style={{ maxWidth: 680, color: S.muted, fontSize: 13, lineHeight: 1.45 }}>
+            Jeden widok dla cen brutto, kosztów wysyłki, prowizji Amazon, zysku i marży na marketplace EU.
+          </div>
+        </div>
+        <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 16, padding: 10 }}>
+          <div style={{ color: S.accentSecondary, fontSize: 12, fontWeight: 900, marginBottom: 6 }}>Założenia</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <span style={pillStyle}>Koszty w PLN</span>
+            <span style={pillStyle}>Kursy EUR / GBP / SEK</span>
+            <span style={pillStyle}>UPS: paliwo + doręczenie</span>
+            <span style={pillStyle}>Zysk po VAT i opłatach</span>
+            <span style={pillStyle}>Brutto zaokrąglane do .49 / .99</span>
+          </div>
         </div>
       </div>
 
-      <Card style={{ padding: 20, marginBottom: 16 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(300px, 1fr)", gap: 18, alignItems: "start" }}>
+      <Card style={{ padding: 16, marginBottom: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(300px, 1fr)", gap: 16, alignItems: "start" }}>
           <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
               <h3 style={{ margin: 0, color: S.text, fontSize: 16 }}>Parametry</h3>
               <span style={{ color: S.dim, fontSize: 12 }}>Jedna zmiana aktualizuje wszystkie markety</span>
             </div>
@@ -2373,16 +2395,23 @@ function FbmCalculator() {
                   <option value="margin">Docelowa marża procentowa</option>
                 </select>
               </label>
-              {renderInput(form.calculationMode === "profit" ? "Docelowy zysk (EUR)" : "Docelowa marża (%)", "targetValue")}
+              {renderInput(form.calculationMode === "profit" ? "Docelowy zysk (EUR)" : "Docelowa marża (%)", "targetValue", null, true, "0.01")}
               <label>
-                <span style={labelStyle}>Waga przesyłki</span>
-                <select value={form.weightTier} onChange={e => update("weightTier", e.target.value)} style={inputStyle}>
+                <span style={activeLabelStyle}>Waga przesyłki</span>
+                <select value={form.weightTier} onChange={e => update("weightTier", e.target.value)} style={activeInputStyle}>
                   {FBM_WEIGHT_OPTIONS.map(weight => <option key={weight} value={weight}>do {weight} kg</option>)}
                 </select>
               </label>
-              {renderInput("Koszt produktu (PLN)", "productCostPln")}
+              {renderInput("Koszt produktu (PLN)", "productCostPln", null, true, "0.01")}
               {renderInput("Koszt pakowania (PLN)", "packingCostPln")}
-              {renderInput("Prowizja Amazon (%)", "amazonFeeRate")}
+              <label>
+                <span style={labelStyle}>Prowizja Amazon (%)</span>
+                <select value={form.amazonFeeRate} onChange={e => update("amazonFeeRate", e.target.value)} style={inputStyle}>
+                  <option value="15">15%</option>
+                  <option value="13">13%</option>
+                  <option value="8">8%</option>
+                </select>
+              </label>
               {renderInput("Koszty inne (PLN)", "otherCostPln")}
               {renderInput("Kurs PLN -> EUR", "eurRate")}
               {renderInput("Kurs PLN -> GBP", "gbpRate")}
@@ -2401,13 +2430,17 @@ function FbmCalculator() {
             </div>
           </div>
 
-          <div style={{ display: "grid", gap: 10, alignSelf: "start" }}>
+          <div style={{ display: "grid", gap: 8, alignSelf: "start" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 2 }}>
+              <h3 style={{ margin: 0, color: S.text, fontSize: 16 }}>Podsumowanie globalne</h3>
+              <span style={{ color: S.dim, fontSize: 11 }}>Stan bieżący</span>
+            </div>
             {[
               ["Koszt bazowy", formatFbmCurrency(result.baseCostPln, "PLN")],
               ["Wybrana waga", `do ${result.weightTier} kg`],
               ["Cel kalkulacji", form.calculationMode === "profit" ? `${formatFbmCurrency(number("targetValue", 10), "EUR")} zysku` : `${number("targetValue", 25).toFixed(2).replace(".", ",")}% marży`],
             ].map(([label, value]) => (
-              <div key={label} style={{ padding: 14, borderRadius: 12, background: S.card2, border: `1px solid ${S.border}` }}>
+              <div key={label} style={{ padding: 12, borderRadius: 12, background: S.card2, border: `1px solid ${S.border}` }}>
                 <div style={{ fontSize: 11, color: S.dim, marginBottom: 4 }}>{label}</div>
                 <div style={{ fontWeight: 800, color: S.text }}>{value}</div>
               </div>
@@ -2419,7 +2452,7 @@ function FbmCalculator() {
       <Card style={{ padding: 0, overflow: "hidden" }}>
         <div style={{ padding: "18px 20px 8px", display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
           <h3 style={{ margin: 0, color: S.text, fontSize: 16 }}>Wszystkie markety</h3>
-          <span style={{ color: S.dim, fontSize: 12 }}>Cena brutto jest liczona po odjęciu VAT, prowizji i kosztów.</span>
+          <span style={{ color: S.dim, fontSize: 12 }}>Cena sprzedaży brutto jest liczona tak, aby osiągnąć ustawiony cel po odjęciu VAT, prowizji i kosztów.</span>
         </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1120 }}>
@@ -2459,6 +2492,9 @@ function FbmCalculator() {
               ))}
             </tbody>
           </table>
+        </div>
+        <div style={{ padding: "10px 20px 14px", color: S.dim, fontSize: 10, lineHeight: 1.45 }}>
+          VAT ustawiony jest według standardowych stawek dla danego kraju. Dla UK i części przedziałów wagowych aplikacja dobiera najbliższy wyższy dostępny próg z Twojego cennika, czyli zgodnie z logiką „do X kg”. W trybie zysku kwotowego wpisana wartość w EUR jest punktem odniesienia dla DE i jest przeliczana na GBP, PLN, SEK po ustawionych kursach. Dla Francji, Włoch i Hiszpanii prowizja Amazon zawiera też <code style={{ color: S.accentSecondary, fontFamily: S.mono }}>Digital Services Fee</code> liczone jako 3% referral fee.
         </div>
       </Card>
     </div>
@@ -2608,7 +2644,7 @@ export default function App() {
         <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
           <TabBtn active={activeTool === "home"} onClick={() => setActiveTool("home")} icon="⌂">Narzędzia</TabBtn>
           <TabBtn active={activeTool === "optimizer"} onClick={() => setActiveTool("optimizer")} icon="⚡">Amazon Optimizer</TabBtn>
-          <TabBtn active={activeTool === "calculator"} onClick={() => setActiveTool("calculator")} icon="↗">Kalkulator FBM</TabBtn>
+          <TabBtn active={activeTool === "calculator"} onClick={() => setActiveTool("calculator")} icon="🧮">Kalkulator FBM</TabBtn>
         </div>
 
         {activeTool === "home" && (
