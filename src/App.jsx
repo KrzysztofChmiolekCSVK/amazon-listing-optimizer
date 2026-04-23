@@ -2359,13 +2359,13 @@ function FbmCalculator() {
       </div>
 
       <Card style={{ padding: 20, marginBottom: 16 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 3fr) minmax(260px, 1fr)", gap: 18 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(300px, 1fr)", gap: 18, alignItems: "start" }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
               <h3 style={{ margin: 0, color: S.text, fontSize: 16 }}>Parametry</h3>
               <span style={{ color: S.dim, fontSize: 12 }}>Jedna zmiana aktualizuje wszystkie markety</span>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(150px, 1fr))", gap: 10 }}>
               <label>
                 <span style={labelStyle}>Tryb kalkulacji</span>
                 <select value={form.calculationMode} onChange={e => update("calculationMode", e.target.value)} style={inputStyle}>
