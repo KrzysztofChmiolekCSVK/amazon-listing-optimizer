@@ -2453,7 +2453,7 @@ function FbmCalculator() {
     border: "1px solid rgba(197, 92, 31, 0.34)",
     background: "rgba(255, 244, 231, 0.96)",
   };
-  const labelStyle = { display: "block", fontSize: 9, color: S.muted, fontWeight: 800, marginBottom: 3 };
+  const labelStyle = { display: "block", fontSize: 11, color: S.muted, fontWeight: 800, marginBottom: 5 };
   const activeLabelStyle = { ...labelStyle, color: S.accentSecondary };
   const thStyle = { padding: "7px 7px", textAlign: "left", color: S.accentSecondary, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${S.border}` };
   const tdStyle = { padding: "7px 7px", borderBottom: `1px solid rgba(84,61,28,0.10)`, fontSize: 12, verticalAlign: "middle" };
