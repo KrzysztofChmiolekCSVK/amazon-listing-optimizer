@@ -447,7 +447,16 @@ function CategoryBrowser({ btg, selectedCategory, setSelectedCategory, categoryL
       </div>
 
       {/* === SEARCH / LOCKED STATE === */}
-      <div ref={ref} style={{ position: "relative", marginBottom: 12, display: "flex", gap: 8, alignItems: "center" }}>
+      <div
+        ref={ref}
+        style={{
+          position: "relative",
+          marginBottom: showDropdown && filtered.length > 0 ? Math.min(filtered.length, 6) * 48 + 24 : 12,
+          display: "flex",
+          gap: 8,
+          alignItems: "center"
+        }}
+      >
         <div style={{ flex: 1, position: "relative" }}>
           <input
             disabled={categoryLocked}
@@ -479,20 +488,35 @@ function CategoryBrowser({ btg, selectedCategory, setSelectedCategory, categoryL
         {showDropdown && filtered.length > 0 && (
           <div style={{
             position: "absolute", top: "100%", left: 0, right: 0, zIndex: 50, marginTop: 4,
-            background: "#1a1b24", border: `1px solid ${S.border}`, borderRadius: 10,
-            maxHeight: 280, overflowY: "auto", boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
+            background: "linear-gradient(180deg, #f8f1e6 0%, #f2e8d9 100%)",
+            border: `1px solid ${S.border}`,
+            borderRadius: 14,
+            maxHeight: 280,
+            overflowY: "auto",
+            boxShadow: "0 18px 40px rgba(150, 111, 51, 0.16)",
+            scrollbarWidth: "thin",
+            scrollbarColor: `${S.accent}33 transparent`,
           }}>
             {filtered.map(cat => (
               <button key={cat.id} onClick={() => {
                 handlePickCategory(cat.id);
                 setShowDropdown(false);
               }} style={{
-                display: "block", width: "100%", padding: "10px 14px", border: "none", borderBottom: `1px solid ${S.border}`,
-                background: selectedCategory === cat.id ? "rgba(197, 92, 31, 0.10)" : "transparent",
-                color: S.text, fontSize: 13, fontFamily: S.font, cursor: "pointer", textAlign: "left",
+                display: "block",
+                width: "100%",
+                padding: "12px 14px",
+                border: "none",
+                borderBottom: `1px solid rgba(196, 138, 64, 0.16)`,
+                background: selectedCategory === cat.id ? "rgba(226, 128, 36, 0.12)" : "rgba(255, 255, 255, 0.35)",
+                color: S.text,
+                fontSize: 13,
+                fontFamily: S.font,
+                cursor: "pointer",
+                textAlign: "left",
+                transition: "background 0.18s ease",
               }}>
-                <div style={{ fontWeight: 500 }}>{cat.path}</div>
-                <div style={{ fontSize: 11, color: S.dim, marginTop: 2 }}>
+                <div style={{ fontWeight: 600, color: "#6f3f12" }}>{cat.path}</div>
+                <div style={{ fontSize: 11, color: S.dim, marginTop: 3 }}>
                   item_type_keyword: <span style={{ color: S.accent }}>{cat.item_type}</span>
                   {cat.attr_count > 0 && <span> · {cat.attr_count} atrybutów</span>}
                 </div>
