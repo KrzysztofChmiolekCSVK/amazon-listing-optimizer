@@ -2734,10 +2734,10 @@ function FbmCalculator() {
 function ToolHub({ onOpenOptimizer, onOpenCalculator }) {
   const tools = [
     {
-      title: "Amazon Optimizer",
+      title: "Generator listingów",
       tag: "Listing AI",
       text: "Generator tytułów, bulletów, opisu i backend keywords dla marketplace EU.",
-      action: "Otwórz optimizer",
+      action: "Otwórz generator",
       onClick: onOpenOptimizer,
     },
     {
@@ -2873,7 +2873,7 @@ export default function App() {
       <div style={{ padding: "20px 28px", width: "min(100%, 1420px)", margin: "0 auto" }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
           <TabBtn active={activeTool === "home"} onClick={() => setActiveTool("home")} icon="⌂">Narzędzia</TabBtn>
-          <TabBtn active={activeTool === "optimizer"} onClick={() => setActiveTool("optimizer")} icon="⚡">Amazon Optimizer</TabBtn>
+          <TabBtn active={activeTool === "optimizer"} onClick={() => setActiveTool("optimizer")} icon="⚡">Generator listingów</TabBtn>
           <TabBtn active={activeTool === "calculator"} onClick={() => setActiveTool("calculator")} icon="🧮">Kalkulator FBM</TabBtn>
         </div>
 
