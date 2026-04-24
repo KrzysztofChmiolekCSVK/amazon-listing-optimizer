@@ -706,7 +706,7 @@ function ListingPreview({ listing }) {
    CSV KEYWORD PICKER
    ═══════════════════════════════════════════ */
 
-function CsvKeywordPicker({ keywords, mainKeyword, setMainKeyword, secondaryKeywords, setSecondaryKeywords }) {
+function CsvKeywordPicker({ keywords, mainKeyword, setMainKeyword, secondaryKeywords, setSecondaryKeywords, isTranslating }) {
   const [collapsed, setCollapsed] = useState(false);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("volume");
@@ -727,7 +727,13 @@ function CsvKeywordPicker({ keywords, mainKeyword, setMainKeyword, secondaryKeyw
 
   const filtered = useMemo(() => {
     let arr = [...keywords];
-    if (search) arr = arr.filter(k => k.keyword.toLowerCase().includes(search.toLowerCase()));
+    if (search) {
+      const query = search.toLowerCase();
+      arr = arr.filter(k =>
+        k.keyword.toLowerCase().includes(query) ||
+        (k.translation || "").toLowerCase().includes(query)
+      );
+    }
     arr.sort((a, b) => {
       const av = sortBy === "keyword" ? a.keyword.toLowerCase() : (a[sortBy] || 0);
       const bv = sortBy === "keyword" ? b.keyword.toLowerCase() : (b[sortBy] || 0);
@@ -790,6 +796,7 @@ function CsvKeywordPicker({ keywords, mainKeyword, setMainKeyword, secondaryKeyw
             {keywords.length} słów
             {hasMain && <span style={{ color: S.accentSecondary, marginLeft: 6 }}>⭐ główne: {mainKeyword}</span>}
             {selCount > 0 && <span style={{ color: pickerAccent, marginLeft: 6 }}>• {selCount} secondary</span>}
+            {isTranslating && <span style={{ color: S.accentSecondary, marginLeft: 6 }}>• tłumaczę na polski...</span>}
           </span>
         </div>
         <span style={{ color: pickerAccent, fontSize: 12 }}>{collapsed ? "▶ Rozwiń" : "▼ Zwiń"}</span>
@@ -826,7 +833,7 @@ function CsvKeywordPicker({ keywords, mainKeyword, setMainKeyword, secondaryKeyw
                   <th style={{ padding: "7px 8px", textAlign: "center", width: 32, borderBottom: `1px solid ${S.border}`, color: S.muted, fontSize: 11 }} title="Ustaw jako główne słowo kluczowe (Main Keyword)">⭐</th>
                   <th style={{ padding: "7px 8px", textAlign: "center", width: 32, borderBottom: `1px solid ${S.border}`, color: S.muted, fontSize: 11 }} title="Dodaj do Secondary Keywords">✓</th>
                   <SortTh col="keyword" label="Słowo kluczowe" />
-                  <SortTh col="volume" label="Wolumen" align="right" />
+                  <SortTh col="volume" label="Ilość wyszukiwań / miesiąc" align="right" />
                   {keywords[0]?.cerebroScore !== undefined && <SortTh col="cerebroScore" label="IQ Score" align="right" />}
                   {keywords[0]?.organicRank !== undefined && <SortTh col="organicRank" label="Org. Rank" align="right" />}
                 </tr>
@@ -861,7 +868,12 @@ function CsvKeywordPicker({ keywords, mainKeyword, setMainKeyword, secondaryKeyw
                         onClick={() => toggleSecondary(kw.keyword)}
                         style={{ padding: "6px 10px", cursor: "pointer", color: isMain ? S.accentSecondary : isSec ? S.text : S.muted, fontWeight: isMain ? 700 : isSec ? 600 : 400 }}
                       >
-                        {kw.keyword}
+                        <div>{kw.keyword}</div>
+                        {kw.translation && kw.translation.toLowerCase() !== kw.keyword.toLowerCase() && (
+                          <div style={{ marginTop: 2, fontSize: 10, color: S.dim, fontFamily: S.font }}>
+                            ({kw.translation})
+                          </div>
+                        )}
                         {isMain && <span style={{ marginLeft: 6, fontSize: 9, color: S.accentSecondary, fontWeight: 700, textTransform: "uppercase" }}>główne</span>}
                       </td>
                       {/* Volume */}
@@ -1079,11 +1091,44 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, setProvid
   const [error, setError] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [imageData, setImageData] = useState([]);
+  const [csvTranslating, setCsvTranslating] = useState(false);
   const activeProviderRef = useRef(provider);
   const activeModelRef = useRef(model);
 
   useEffect(() => { activeProviderRef.current = provider; }, [provider]);
   useEffect(() => { activeModelRef.current = model; }, [model]);
+
+  async function translateCsvKeywords(keywords) {
+    const chunkSize = 40;
+    const translatedMap = new Map();
+
+    for (let i = 0; i < keywords.length; i += chunkSize) {
+      const chunk = keywords.slice(i, i + chunkSize);
+      const payload = chunk.map(item => item.keyword);
+      const response = await callAI([
+        {
+          role: "system",
+          content: "You translate ecommerce search keywords into Polish. Return JSON only.",
+        },
+        {
+          role: "user",
+          content: `Translate the following search keywords into natural Polish.\nRules:\n- Keep the original meaning.\n- If the keyword is already Polish, keep it unchanged.\n- Preserve product intent, not literal grammar at all costs.\n- Return valid JSON in this exact shape: {\"translations\":[{\"keyword\":\"...\",\"translation\":\"...\"}]}\n\nKeywords:\n${payload.map((keyword, index) => `${index + 1}. ${keyword}`).join("\n")}`,
+        },
+      ], "gemini", DEFAULT_MODELS.gemini, false);
+
+      const translations = Array.isArray(response?.translations) ? response.translations : [];
+      for (const entry of translations) {
+        if (entry?.keyword && entry?.translation) {
+          translatedMap.set(String(entry.keyword).trim().toLowerCase(), String(entry.translation).trim());
+        }
+      }
+    }
+
+    return keywords.map(item => ({
+      ...item,
+      translation: translatedMap.get(item.keyword.trim().toLowerCase()) || "",
+    }));
+  }
 
   // CSV parser for Helium 10
   function handleCsvUpload(e) {
@@ -1092,7 +1137,7 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, setProvid
     e.target.value = null;
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       try {
         const text = ev.target.result;
         const lines = text.split("\n").map(l => l.split(/[,;\t]/));
@@ -1108,6 +1153,7 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, setProvid
           .filter(row => row[kwIdx]?.trim())
           .map(row => ({
             keyword: row[kwIdx].replace(/"/g, "").trim(),
+            translation: "",
             volume: volIdx >= 0 ? parseInt(row[volIdx]?.replace(/"/g, "").trim()) || 0 : 0,
             cerebroScore: cerebroScoreIdx >= 0 ? parseFloat(row[cerebroScoreIdx]?.replace(/"/g, "").trim()) || 0 : 0,
             organicRank: organicRankIdx >= 0 ? parseInt(row[organicRankIdx]?.replace(/"/g, "").trim()) || 0 : 0,
@@ -1116,6 +1162,15 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, setProvid
           .sort((a, b) => b.volume - a.volume);
 
         setCsvKeywords(keywords);
+        setCsvTranslating(true);
+        try {
+          const translatedKeywords = await translateCsvKeywords(keywords);
+          setCsvKeywords(translatedKeywords);
+        } catch {
+          // Leave original keywords visible if translation fails.
+        } finally {
+          setCsvTranslating(false);
+        }
         // Keywords are NOT auto-filled — user picks them from CsvKeywordPicker below
       } catch { setError("Błąd parsowania pliku CSV."); }
     };
@@ -2085,7 +2140,7 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
                 fontSize: 11, color: "#22c55e", display: "flex", alignItems: "center", gap: 4,
               }}>
                 📊 Helium 10 — {csvKeywords.length} keywords
-                <button onClick={() => { setCsvKeywords(null); }} style={{
+                <button onClick={() => { setCsvKeywords(null); setCsvTranslating(false); }} style={{
                   background: "none", border: "none", color: "#22c55e", cursor: "pointer", fontSize: 14, padding: "0 2px",
                 }}>×</button>
               </span>
@@ -2117,6 +2172,7 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
           setMainKeyword={setMainKeyword}
           secondaryKeywords={secondaryKeywords}
           setSecondaryKeywords={setSecondaryKeywords}
+          isTranslating={csvTranslating}
         />
       )}
 
