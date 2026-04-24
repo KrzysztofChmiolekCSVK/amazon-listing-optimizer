@@ -835,7 +835,7 @@ function CsvKeywordPicker({ keywords, mainKeyword, setMainKeyword, secondaryKeyw
                   <SortTh col="keyword" label="Słowo kluczowe" />
                   <SortTh col="volume" label="Ilość wyszukiwań / miesiąc" align="right" />
                   {keywords[0]?.cerebroScore !== undefined && <SortTh col="cerebroScore" label="IQ Score" align="right" />}
-                  {keywords[0]?.organicRank !== undefined && <SortTh col="organicRank" label="Org. Rank" align="right" />}
+                  {keywords[0]?.organicRank !== undefined && <SortTh col="organicRank" label="Ranking organiczny" align="right" />}
                 </tr>
               </thead>
               <tbody>
@@ -2121,12 +2121,13 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
 
           {/* Image/Text Upload */}
           <label style={{
-            padding: "8px 14px", borderRadius: 8, border: `1px solid ${S.border}`,
-            background: S.input, color: S.muted, cursor: "pointer", fontSize: 12,
+            padding: "8px 14px", borderRadius: 8, border: `1px solid ${uploadedFiles.length > 0 ? "#3b82f6" : S.border}`,
+            background: uploadedFiles.length > 0 ? "rgba(59, 130, 246, 0.12)" : S.input,
+            color: uploadedFiles.length > 0 ? "#2563eb" : S.muted, cursor: "pointer", fontSize: 12,
             display: "flex", alignItems: "center", gap: 6,
           }}>
             <span style={{ fontSize: 16 }}>📎</span>
-            Wgraj zdjęcia / pliki tekstowe
+            {uploadedFiles.length > 0 ? `Pliki / zdjęcia (${uploadedFiles.length})` : "Wgraj zdjęcia / pliki tekstowe"}
             <input type="file" accept="image/*,.txt,.docx,.doc,.pdf" multiple onChange={handleTextUpload} style={{ display: "none" }} />
           </label>
         </div>
@@ -2147,12 +2148,12 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
             )}
             {uploadedFiles.map((f, i) => (
               <span key={i} style={{
-                padding: "4px 10px", borderRadius: 6, background: S.input, border: `1px solid ${S.border}`,
-                fontSize: 11, color: S.muted, display: "flex", alignItems: "center", gap: 4,
+                padding: "4px 10px", borderRadius: 6, background: "rgba(59, 130, 246, 0.10)", border: "1px solid rgba(59, 130, 246, 0.24)",
+                fontSize: 11, color: "#2563eb", display: "flex", alignItems: "center", gap: 4,
               }}>
                 {f.type === "image" ? "🖼️" : "📄"} {f.name.length > 25 ? f.name.slice(0, 22) + "..." : f.name}
                 <button onClick={() => removeFile(i)} style={{
-                  background: "none", border: "none", color: S.muted, cursor: "pointer", fontSize: 14, padding: "0 2px",
+                  background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: 14, padding: "0 2px",
                 }}>×</button>
               </span>
             ))}
