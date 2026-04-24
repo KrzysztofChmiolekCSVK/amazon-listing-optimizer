@@ -38,6 +38,18 @@ export async function onRequestPost(context) {
         max_tokens,
         ...(response_format ? { response_format } : {}),
       };
+    } else if (provider === "cerebras") {
+      apiKey = env.CEREBRAS_API_KEY;
+      if (!apiKey) return json({ error: { message: "Missing CEREBRAS_API_KEY secret" } }, 500);
+
+      url = "https://api.cerebras.ai/v1/chat/completions";
+      body = {
+        model,
+        messages,
+        temperature,
+        max_completion_tokens: max_tokens,
+        ...(response_format ? { response_format } : {}),
+      };
     } else {
       return json({ error: { message: "Unsupported provider" } }, 400);
     }

@@ -17,22 +17,61 @@ const MARKETPLACES = [
 
 const GROQ_MODELS = [
   { id: "meta-llama/llama-4-scout-17b-16e-instruct", name: "Llama 4 Scout", desc: "Zalecany — szybki, 12 języków EU, darmowy" },
-  { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B", desc: "Sprawdzony — dobra jakość ogólna" },
-  { id: "meta-llama/llama-4-maverick-17b-128e-instruct", name: "Llama 4 Maverick", desc: "Najlepszy ale niski darmowy limit" },
 ];
 
 const GEMINI_MODELS = [
   { id: "gemini-3.1-flash-lite-preview", name: "Gemini 3.1 Flash Lite ⭐", desc: "500 req/dzień — szybki, wspiera zdjęcia" },
-  { id: "gemma-3-27b-it", name: "Gemma 3 27B", desc: "14 400 req/dzień — open source, bez zdjęć" },
 ];
 
+const CEREBRAS_MODELS = [
+  { id: "qwen-3-235b-a22b-instruct-2507", name: "Qwen 3 235B 2507", desc: "Mocny model tekstowy — bez image-to-text" },
+];
+
+const PROVIDERS = [
+  { id: "groq", name: "Groq", desc: "Llama 4", icon: "⚡" },
+  { id: "cerebras", name: "Cerebras", desc: "Qwen 3 235B 2507", icon: "CB" },
+  { id: "gemini", name: "Google Gemini", desc: "Gemini 3.1 Flash Lite", icon: "💎" },
+];
+
+const DEFAULT_MODELS = {
+  groq: "meta-llama/llama-4-scout-17b-16e-instruct",
+  cerebras: "qwen-3-235b-a22b-instruct-2507",
+  gemini: "gemini-3.1-flash-lite-preview",
+};
+
+const MODEL_LISTS = {
+  groq: GROQ_MODELS,
+  cerebras: CEREBRAS_MODELS,
+  gemini: GEMINI_MODELS,
+};
+
+function getModelsForProvider(provider) {
+  return MODEL_LISTS[provider] || GROQ_MODELS;
+}
+
 function getProviderLabel(provider) {
-  return provider === "gemini" ? "Gemini" : "Groq";
+  return PROVIDERS.find(p => p.id === provider)?.name || provider || "";
 }
 
 function getModelDisplayName(provider, modelId) {
-  const models = provider === "gemini" ? GEMINI_MODELS : GROQ_MODELS;
+  const models = getModelsForProvider(provider);
   return models.find(m => m.id === modelId)?.name || modelId || "";
+}
+
+function getDefaultModelForProvider(provider) {
+  return DEFAULT_MODELS[provider] || DEFAULT_MODELS.gemini;
+}
+
+function isVisionCapableModel(provider, modelId) {
+  return (provider === "groq" && modelId === DEFAULT_MODELS.groq)
+    || (provider === "gemini" && modelId === DEFAULT_MODELS.gemini);
+}
+
+function getVisionFallback(provider) {
+  if (provider === "gemini") {
+    return { provider: "gemini", model: DEFAULT_MODELS.gemini };
+  }
+  return { provider: "groq", model: DEFAULT_MODELS.groq };
 }
 
 const BULLET_THEMES = [
@@ -135,14 +174,14 @@ function writeStoredValue(key, value) {
 
 function getInitialProvider() {
   const provider = readStoredValue("amz-provider", "gemini");
-  return provider === "groq" || provider === "gemini" ? provider : "gemini";
+  return MODEL_LISTS[provider] ? provider : "gemini";
 }
 
 function getInitialModel() {
   const provider = getInitialProvider();
   const storedModel = readStoredValue("amz-model", "");
-  const models = provider === "gemini" ? GEMINI_MODELS : GROQ_MODELS;
-  return models.some(m => m.id === storedModel) ? storedModel : models[0].id;
+  const models = getModelsForProvider(provider);
+  return models.some(m => m.id === storedModel) ? storedModel : getDefaultModelForProvider(provider);
 }
 
 async function readApiError(res) {
@@ -913,14 +952,12 @@ function HistoryPanel({ entries, onLoad, onDelete }) {
    ═══════════════════════════════════════════ */
 
 function SettingsPanel({ provider, setProvider, model, setModel }) {
-  const models = provider === "gemini" ? GEMINI_MODELS : GROQ_MODELS;
+  const models = getModelsForProvider(provider);
 
   function switchProvider(p) {
     setProvider(p);
-    if (p === "gemini" && !GEMINI_MODELS.find(m => m.id === model)) {
-      setModel("gemini-3.1-flash-lite-preview");
-    } else if (p === "groq" && !GROQ_MODELS.find(m => m.id === model)) {
-      setModel("meta-llama/llama-4-scout-17b-16e-instruct");
+    if (!getModelsForProvider(p).find(m => m.id === model)) {
+      setModel(getDefaultModelForProvider(p));
     }
   }
 
@@ -940,10 +977,7 @@ function SettingsPanel({ provider, setProvider, model, setModel }) {
           Provider
         </label>
         <div style={{ display: "flex", gap: 8 }}>
-          {[
-            { id: "groq", name: "Groq", desc: "Llama 4, Qwen, GPT-OSS", icon: "⚡" },
-            { id: "gemini", name: "Google Gemini", desc: "Gemini 3.1 Flash Lite / Gemma 3", icon: "💎" },
-          ].map(p => (
+          {PROVIDERS.map(p => (
             <button key={p.id} onClick={() => switchProvider(p.id)} style={{
               padding: "10px 16px", borderRadius: 8, flex: 1,
               border: provider === p.id ? `2px solid ${S.accent}` : `1px solid ${S.border}`,
@@ -967,13 +1001,12 @@ function SettingsPanel({ provider, setProvider, model, setModel }) {
           padding: "12px 14px", background: S.input, border: `1px solid ${S.border}`,
           borderRadius: 8, color: S.muted, fontSize: 13, lineHeight: 1.5,
         }}>
-          Klucze są używane po stronie Cloudflare Function z sekretów GEMINI_API_KEY i GROQ_API_KEY.
+          Klucze są używane po stronie Cloudflare Function z sekretów GEMINI_API_KEY, GROQ_API_KEY i CEREBRAS_API_KEY.
         </div>
         <div style={{ fontSize: 11, color: S.dim, marginTop: 4 }}>
-          {provider === "gemini"
-            ? <>Darmowy klucz z <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener" style={{ color: S.accent, textDecoration: "none" }}>aistudio.google.com/api-keys</a></>
-            : <>Darmowy klucz z <a href="https://console.groq.com/keys" target="_blank" rel="noopener" style={{ color: S.accent, textDecoration: "none" }}>console.groq.com/keys</a></>
-          }
+          {provider === "gemini" && <>Darmowy klucz z <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener" style={{ color: S.accent, textDecoration: "none" }}>aistudio.google.com/api-keys</a></>}
+          {provider === "groq" && <>Darmowy klucz z <a href="https://console.groq.com/keys" target="_blank" rel="noopener" style={{ color: S.accent, textDecoration: "none" }}>console.groq.com/keys</a></>}
+          {provider === "cerebras" && <>Klucz z <a href="https://cloud.cerebras.ai" target="_blank" rel="noopener" style={{ color: S.accent, textDecoration: "none" }}>cloud.cerebras.ai</a></>}
         </div>
       </div>
 
@@ -1112,29 +1145,22 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, setProvid
     setUploadedFiles(prev => prev.filter((_, i) => i !== idx));
   }
 
-  async function callAI(messages, providerOverride = activeProviderRef.current, modelOverride = activeModelRef.current, allowFallback = true) {
-    let body;
+  function applyProviderModelSelection(nextProvider, nextModel) {
+    activeProviderRef.current = nextProvider;
+    activeModelRef.current = nextModel;
+    setProvider(nextProvider);
+    setModel(nextModel);
+  }
 
-    if (providerOverride === "gemini") {
-      const isGemma = modelOverride.startsWith("gemma");
-      body = {
-        provider: providerOverride,
-        model: modelOverride,
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 8192,
-        ...(isGemma ? {} : { response_format: { type: "json_object" } }),
-      };
-    } else {
-      body = {
-        provider: providerOverride,
-        model: modelOverride,
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 3000,
-        response_format: { type: "json_object" },
-      };
-    }
+  async function callAI(messages, providerOverride = activeProviderRef.current, modelOverride = activeModelRef.current, allowFallback = true) {
+    const body = {
+      provider: providerOverride,
+      model: modelOverride,
+      messages,
+      temperature: 0.7,
+      max_tokens: providerOverride === "gemini" ? 8192 : 3000,
+      response_format: { type: "json_object" },
+    };
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 90_000); // 90s timeout
@@ -1155,12 +1181,9 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, setProvid
     if (!res.ok) {
       const errMsg = await readApiError(res);
       if (allowFallback && providerOverride === "gemini" && isGeminiLimitError(errMsg)) {
-        const fallbackModel = "meta-llama/llama-4-scout-17b-16e-instruct";
+        const fallbackModel = DEFAULT_MODELS.groq;
         setStatus("Limit Gemini wyczerpany — przełączam automatycznie na Groq...");
-        activeProviderRef.current = "groq";
-        activeModelRef.current = fallbackModel;
-        setProvider("groq");
-        setModel(fallbackModel);
+        applyProviderModelSelection("groq", fallbackModel);
         return callAI(messages, "groq", fallbackModel, false);
       }
       throw new Error(errMsg);
@@ -1490,6 +1513,14 @@ Respond ONLY with the full corrected JSON.`;
       const mp = MARKETPLACES.find(m => m.code === marketplace);
       const catInfo = selectedCategory && btg?.category_attrs[selectedCategory];
       const prompt = buildPrompt(mp, catInfo, brand, compatibilityTitle, compatibilityBulletExt, categoryAttrs);
+
+      if (imageData.length > 0 && !isVisionCapableModel(activeProviderRef.current, activeModelRef.current)) {
+        const fallback = getVisionFallback(activeProviderRef.current);
+        applyProviderModelSelection(fallback.provider, fallback.model);
+        setStatus(fallback.provider === "groq"
+          ? "Wykryto zdjęcia — przełączam na Llama 4 Scout, bo wybrany model nie obsługuje image-to-text."
+          : "Wykryto zdjęcia — przełączam na Gemini 3.1 Flash Lite, bo wybrany model nie obsługuje image-to-text.");
+      }
 
       // Build message with optional images
       let userContent;
@@ -1856,12 +1887,9 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
             if (!padRes.ok) {
               const padErr = await readApiError(padRes);
               if (activeProviderRef.current === "gemini" && isGeminiLimitError(padErr)) {
-                const fallbackModel = "meta-llama/llama-4-scout-17b-16e-instruct";
+                const fallbackModel = DEFAULT_MODELS.groq;
                 setStatus("Limit Gemini wyczerpany — przełączam automatycznie na Groq...");
-                activeProviderRef.current = "groq";
-                activeModelRef.current = fallbackModel;
-                setProvider("groq");
-                setModel(fallbackModel);
+                applyProviderModelSelection("groq", fallbackModel);
                 padRes = await fetch("/api/ai", {
                   method: "POST",
                   signal: padCtrl.signal,
@@ -1919,7 +1947,7 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
     } catch (e) {
       const msg = e.message || "";
       if (msg.toLowerCase().includes("rate limit") || msg.includes("429") || msg.includes("TPM")) {
-        setError("Przekroczono limit tokenów dla tego modelu. Przełącz się na inny model w zakładce ⚙️ Ustawienia (np. Llama 3.3 70B lub Qwen 3 32B) i spróbuj ponownie.");
+        setError("Przekroczono limit tokenów dla tego modelu. Przełącz się na inny model w zakładce ⚙️ Ustawienia (np. Llama 4 Scout, Qwen 3 235B albo Gemini 3.1 Flash Lite) i spróbuj ponownie.");
       } else if (msg.toLowerCase().includes("decommissioned") || msg.toLowerCase().includes("not supported")) {
         setError("Ten model został wycofany. Przełącz się na inny w zakładce ⚙️ Ustawienia.");
       } else {
