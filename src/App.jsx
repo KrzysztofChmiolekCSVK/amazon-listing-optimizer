@@ -45,6 +45,8 @@ const MODEL_LISTS = {
   gemini: GEMINI_MODELS,
 };
 
+const BRAND_OPTIONS = ["Sillar", "Wessper", "Aquafloow"];
+
 function getModelsForProvider(provider) {
   return MODEL_LISTS[provider] || GROQ_MODELS;
 }
@@ -327,6 +329,25 @@ function Field({ label, value, onChange, placeholder, multi, maxChars, maxBytes,
         {maxChars && <CharBadge current={(value||"").length} max={maxChars} label="znaki" />}
         {maxBytes && <CharBadge current={byteCount(value)} max={maxBytes} label="bajty" />}
       </div>
+      {helper && <div style={{ fontSize: 11, color: S.dim, marginTop: 4 }}>{helper}</div>}
+    </div>
+  );
+}
+
+function SelectField({ label, value, onChange, options, helper }) {
+  const st = {
+    width: "100%", padding: "12px 14px", background: S.input, border: `1px solid ${S.border}`,
+    borderRadius: 8, color: S.text, fontSize: 14, fontFamily: S.font, outline: "none",
+    boxSizing: "border-box", lineHeight: 1.5,
+  };
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: S.muted, marginBottom: 6,
+        textTransform: "uppercase", letterSpacing: "0.05em", fontFamily: S.font }}>{label}</label>
+      <select value={value} onChange={e => onChange(e.target.value)} style={st}>
+        <option value="">Bez brandu</option>
+        {options.map(option => <option key={option} value={option}>{option}</option>)}
+      </select>
       {helper && <div style={{ fontSize: 11, color: S.dim, marginTop: 4 }}>{helper}</div>}
     </div>
   );
@@ -1994,9 +2015,9 @@ Respond with ONLY the words, nothing else. No JSON, no explanation. Just space-s
 
       <Field label="Opis produktu" value={productInfo} onChange={setProductInfo} multi
         placeholder="np. Bambusowa deska do krojenia premium, 40x30 cm, z rowkiem na sok i antypoślizgowymi nóżkami..." />
-      <Field label="Marka produktu (Brand)" value={brand} onChange={setBrand}
-        placeholder="np. CookNature, Sillar..."
-        helper="Opcjonalne. Zostanie użyte na samym początku tytułu oraz wkomponowane w treść listingu." />
+      <SelectField label="Marka produktu (Brand)" value={brand} onChange={setBrand}
+        options={BRAND_OPTIONS}
+        helper="Opcjonalne. Jeśli nic nie wybierzesz, listing zostanie wygenerowany bez brandu." />
       <Field label="Główne słowo kluczowe (Main Keyword)" value={mainKeyword} onChange={setMainKeyword}
         placeholder="np. Gleitbrett, Wasserfilterkartusche, Schneidebrett..."
         helper="To słowo pojawi się na początku tytułu (w pierwszych 70 znakach). Jedno słowo/fraza opisująca czym jest produkt." />
