@@ -713,6 +713,12 @@ function CsvKeywordPicker({ keywords, mainKeyword, setMainKeyword, secondaryKeyw
   const [sortDir, setSortDir] = useState("desc");
   const [currentPage, setCurrentPage] = useState(1);
   const PER_PAGE = 20;
+  const pickerAccent = "#6f8f5f";
+  const pickerAccentSoft = "rgba(111, 143, 95, 0.12)";
+  const pickerAccentBorder = "rgba(111, 143, 95, 0.32)";
+  const pickerMainSoft = "rgba(197, 92, 31, 0.12)";
+  const pickerSelectedSoft = "rgba(111, 143, 95, 0.10)";
+  const pickerHeaderSoft = "rgba(197, 92, 31, 0.08)";
 
   const selectedSet = useMemo(() => {
     if (!secondaryKeywords) return new Set();
@@ -760,7 +766,7 @@ function CsvKeywordPicker({ keywords, mainKeyword, setMainKeyword, secondaryKeyw
     <th onClick={() => toggleSort(col)} style={{
       padding: "7px 10px", textAlign: align, cursor: "pointer", whiteSpace: "nowrap",
       color: sortBy === col ? "#f59e0b" : S.muted, fontWeight: 600, fontSize: 11,
-      borderBottom: `1px solid ${S.border}`, background: sortBy === col ? "#1a1b2440" : "transparent",
+      borderBottom: `1px solid ${S.border}`, background: sortBy === col ? pickerHeaderSoft : "transparent",
       userSelect: "none",
     }}>
       {label} {sortBy === col ? (sortDir === "desc" ? "↓" : "↑") : ""}
@@ -768,25 +774,25 @@ function CsvKeywordPicker({ keywords, mainKeyword, setMainKeyword, secondaryKeyw
   );
 
   return (
-    <div style={{ marginBottom: 16, borderRadius: 12, border: "1px solid #22c55e40", background: "#0a0b10", overflow: "hidden" }}>
+    <div style={{ marginBottom: 16, borderRadius: 12, border: `1px solid ${pickerAccentBorder}`, background: S.card, overflow: "hidden" }}>
       {/* Header row */}
       <div
         onClick={() => setCollapsed(c => !c)}
         style={{
-          padding: "10px 16px", background: "#22c55e0d", display: "flex", alignItems: "center",
+          padding: "10px 16px", background: pickerAccentSoft, display: "flex", alignItems: "center",
           justifyContent: "space-between", cursor: "pointer", gap: 8,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <span style={{ fontSize: 16 }}>📊</span>
-          <span style={{ fontWeight: 700, fontSize: 13, color: "#22c55e" }}>Wybierz słowa kluczowe z Helium 10</span>
+          <span style={{ fontWeight: 700, fontSize: 13, color: pickerAccent }}>Wybierz słowa kluczowe z Helium 10</span>
           <span style={{ fontSize: 11, color: S.dim }}>
             {keywords.length} słów
-            {hasMain && <span style={{ color: "#a3e635", marginLeft: 6 }}>⭐ główne: {mainKeyword}</span>}
-            {selCount > 0 && <span style={{ color: "#22c55e", marginLeft: 6 }}>• {selCount} secondary</span>}
+            {hasMain && <span style={{ color: S.accentSecondary, marginLeft: 6 }}>⭐ główne: {mainKeyword}</span>}
+            {selCount > 0 && <span style={{ color: pickerAccent, marginLeft: 6 }}>• {selCount} secondary</span>}
           </span>
         </div>
-        <span style={{ color: "#22c55e", fontSize: 12 }}>{collapsed ? "▶ Rozwiń" : "▼ Zwiń"}</span>
+        <span style={{ color: pickerAccent, fontSize: 12 }}>{collapsed ? "▶ Rozwiń" : "▼ Zwiń"}</span>
       </div>
 
       {!collapsed && (
@@ -806,7 +812,7 @@ function CsvKeywordPicker({ keywords, mainKeyword, setMainKeyword, secondaryKeyw
             {(selCount > 0 || hasMain) && (
               <button
                 onClick={() => { setSecondaryKeywords(""); setMainKeyword(""); }}
-                style={{ padding: "5px 10px", background: "#ef444415", border: "1px solid #ef444440", borderRadius: 6, color: "#ef4444", fontSize: 11, cursor: "pointer" }}
+                style={{ padding: "5px 10px", background: "rgba(197, 92, 31, 0.10)", border: "1px solid rgba(197, 92, 31, 0.25)", borderRadius: 6, color: S.accentSecondary, fontSize: 11, cursor: "pointer" }}
               >
                 ✕ Wyczyść wszystko
               </button>
@@ -829,9 +835,9 @@ function CsvKeywordPicker({ keywords, mainKeyword, setMainKeyword, secondaryKeyw
                 {pageKws.map(kw => {
                   const isMain = mainKeyword === kw.keyword;
                   const isSec = selectedSet.has(kw.keyword.toLowerCase());
-                  const rowBg = isMain ? "#a3e63518" : isSec ? "#22c55e10" : "#14151e";
+                  const rowBg = isMain ? pickerMainSoft : isSec ? pickerSelectedSoft : "rgba(255, 252, 248, 0.68)";
                   return (
-                    <tr key={kw.keyword} style={{ borderBottom: `1px solid #1a1b24`, background: rowBg, transition: "background 0.15s" }}>
+                    <tr key={kw.keyword} style={{ borderBottom: `1px solid ${S.border}`, background: rowBg, transition: "background 0.15s" }}>
                       {/* Main star */}
                       <td style={{ padding: "6px 8px", textAlign: "center" }}>
                         <button
@@ -853,10 +859,10 @@ function CsvKeywordPicker({ keywords, mainKeyword, setMainKeyword, secondaryKeyw
                       {/* Keyword name */}
                       <td
                         onClick={() => toggleSecondary(kw.keyword)}
-                        style={{ padding: "6px 10px", cursor: "pointer", color: isMain ? "#a3e635" : isSec ? "#e5e7eb" : "#6b7280", fontWeight: isMain ? 700 : isSec ? 500 : 400 }}
+                        style={{ padding: "6px 10px", cursor: "pointer", color: isMain ? S.accentSecondary : isSec ? S.text : S.muted, fontWeight: isMain ? 700 : isSec ? 600 : 400 }}
                       >
                         {kw.keyword}
-                        {isMain && <span style={{ marginLeft: 6, fontSize: 9, color: "#a3e635", fontWeight: 700, textTransform: "uppercase" }}>główne</span>}
+                        {isMain && <span style={{ marginLeft: 6, fontSize: 9, color: S.accentSecondary, fontWeight: 700, textTransform: "uppercase" }}>główne</span>}
                       </td>
                       {/* Volume */}
                       <td style={{ padding: "6px 10px", textAlign: "right", color: S.muted }}>{kw.volume > 0 ? kw.volume.toLocaleString() : "—"}</td>
@@ -891,9 +897,9 @@ function CsvKeywordPicker({ keywords, mainKeyword, setMainKeyword, secondaryKeyw
 
           {/* Summary of selected */}
           {(hasMain || selCount > 0) && (
-            <div style={{ marginTop: 12, padding: "8px 12px", background: "#1a1b24", borderRadius: 8, fontSize: 11, color: S.muted, lineHeight: 1.6 }}>
-              {hasMain && <div><span style={{ color: "#a3e635", fontWeight: 600 }}>⭐ Główne:</span> <span style={{ color: S.text }}>{mainKeyword}</span></div>}
-              {selCount > 0 && <div><span style={{ color: "#22c55e", fontWeight: 600 }}>✓ Secondary ({selCount}):</span> <span style={{ color: S.text }}>{secondaryKeywords}</span></div>}
+            <div style={{ marginTop: 12, padding: "8px 12px", background: S.card2, border: `1px solid ${S.border}`, borderRadius: 8, fontSize: 11, color: S.muted, lineHeight: 1.6 }}>
+              {hasMain && <div><span style={{ color: S.accentSecondary, fontWeight: 600 }}>⭐ Główne:</span> <span style={{ color: S.text }}>{mainKeyword}</span></div>}
+              {selCount > 0 && <div><span style={{ color: pickerAccent, fontWeight: 600 }}>✓ Secondary ({selCount}):</span> <span style={{ color: S.text }}>{secondaryKeywords}</span></div>}
             </div>
           )}
         </div>
