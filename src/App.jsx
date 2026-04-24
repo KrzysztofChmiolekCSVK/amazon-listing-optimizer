@@ -708,6 +708,7 @@ function ListingPreview({ listing }) {
 
 function CsvKeywordPicker({ keywords, mainKeyword, setMainKeyword, secondaryKeywords, setSecondaryKeywords, isTranslating }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("volume");
   const [sortDir, setSortDir] = useState("desc");
@@ -767,6 +768,42 @@ function CsvKeywordPicker({ keywords, mainKeyword, setMainKeyword, secondaryKeyw
 
   const selCount = selectedSet.size;
   const hasMain = !!mainKeyword;
+  const basicColumns = [
+    { col: "keyword", label: "Fraza kluczowa" },
+    { col: "volume", label: "Ilość wyszukiwań / miesiąc", align: "right" },
+    { col: "cerebroScore", label: "Cerebro IQ Score", align: "right", visible: keywords[0]?.cerebroScore !== undefined },
+    { col: "organicRank", label: "Ranking organiczny", align: "right", visible: keywords[0]?.organicRank !== undefined },
+    { col: "titleDensity", label: "Nasycenie tytułów", align: "right", visible: keywords[0]?.titleDensity !== undefined },
+    { col: "keywordSales", label: "Sprzedaż z frazy", align: "right", visible: keywords[0]?.keywordSales !== undefined },
+  ];
+  const advancedColumns = [
+    { col: "searchVolumeTrend", label: "Trend wyszukiwań", align: "right", visible: keywords[0]?.searchVolumeTrend !== undefined },
+    { col: "abaClickShare", label: "ABA Click Share", align: "right", visible: keywords[0]?.abaClickShare !== undefined },
+    { col: "abaConvShare", label: "ABA Conv. Share", align: "right", visible: keywords[0]?.abaConvShare !== undefined },
+    { col: "sponsoredAsins", label: "Sponsorowane ASIN-y", align: "right", visible: keywords[0]?.sponsoredAsins !== undefined },
+    { col: "competingProducts", label: "Konkurencyjne produkty", align: "right", visible: keywords[0]?.competingProducts !== undefined },
+    { col: "matchType", label: "Typ dopasowania", align: "left", visible: keywords[0]?.matchType !== undefined },
+    { col: "amazonRecRank", label: "Amazon Rec. Rank", align: "right", visible: keywords[0]?.amazonRecRank !== undefined },
+    { col: "sponsoredRank", label: "Ranking sponsorowany", align: "right", visible: keywords[0]?.sponsoredRank !== undefined },
+  ];
+  const visibleBasicColumns = basicColumns.filter(col => col.visible !== false);
+  const visibleAdvancedColumns = advancedColumns.filter(col => col.visible !== false);
+  const visibleColumns = showAdvanced ? [...visibleBasicColumns, ...visibleAdvancedColumns] : visibleBasicColumns;
+
+  const formatCellValue = (kw, col) => {
+    const value = kw[col];
+    if (value === undefined || value === null || value === "") return "—";
+    if (col === "keyword") return value;
+    if (col === "matchType") return value;
+    if (col === "searchVolumeTrend") return `${value > 0 ? "+" : ""}${value}%`;
+    if (["volume", "keywordSales", "cerebroScore", "titleDensity", "sponsoredAsins", "amazonRecRank", "sponsoredRank", "organicRank"].includes(col)) {
+      return Number.isFinite(value) ? value.toLocaleString() : String(value);
+    }
+    if (["abaClickShare", "abaConvShare"].includes(col)) {
+      return typeof value === "number" ? `${value}%` : String(value);
+    }
+    return String(value);
+  };
 
   const SortTh = ({ col, label, align = "left" }) => (
     <th onClick={() => toggleSort(col)} style={{
@@ -824,6 +861,14 @@ function CsvKeywordPicker({ keywords, mainKeyword, setMainKeyword, secondaryKeyw
                 ✕ Wyczyść wszystko
               </button>
             )}
+            {visibleAdvancedColumns.length > 0 && (
+              <button
+                onClick={() => setShowAdvanced(v => !v)}
+                style={{ padding: "5px 10px", background: showAdvanced ? pickerAccentSoft : S.input, border: `1px solid ${showAdvanced ? pickerAccentBorder : S.border}`, borderRadius: 6, color: showAdvanced ? pickerAccent : S.muted, fontSize: 11, cursor: "pointer" }}
+              >
+                {showAdvanced ? "Ukryj widok zaawansowany" : "Pokaż widok zaawansowany"}
+              </button>
+            )}
           </div>
 
           <div style={{ overflowX: "auto" }}>
@@ -832,10 +877,9 @@ function CsvKeywordPicker({ keywords, mainKeyword, setMainKeyword, secondaryKeyw
                 <tr style={{ background: S.card2 }}>
                   <th style={{ padding: "7px 8px", textAlign: "center", width: 32, borderBottom: `1px solid ${S.border}`, color: S.muted, fontSize: 11 }} title="Ustaw jako główne słowo kluczowe (Main Keyword)">⭐</th>
                   <th style={{ padding: "7px 8px", textAlign: "center", width: 32, borderBottom: `1px solid ${S.border}`, color: S.muted, fontSize: 11 }} title="Dodaj do Secondary Keywords">✓</th>
-                  <SortTh col="keyword" label="Słowo kluczowe" />
-                  <SortTh col="volume" label="Ilość wyszukiwań / miesiąc" align="right" />
-                  {keywords[0]?.cerebroScore !== undefined && <SortTh col="cerebroScore" label="IQ Score" align="right" />}
-                  {keywords[0]?.organicRank !== undefined && <SortTh col="organicRank" label="Ranking organiczny" align="right" />}
+                  {visibleColumns.map(column => (
+                    <SortTh key={column.col} col={column.col} label={column.label} align={column.align || "left"} />
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -863,23 +907,27 @@ function CsvKeywordPicker({ keywords, mainKeyword, setMainKeyword, secondaryKeyw
                           style={{ cursor: "pointer", width: 14, height: 14 }}
                         />
                       </td>
-                      {/* Keyword name */}
-                      <td
-                        onClick={() => toggleSecondary(kw.keyword)}
-                        style={{ padding: "6px 10px", cursor: "pointer", color: isMain ? S.accentSecondary : isSec ? S.text : S.muted, fontWeight: isMain ? 700 : isSec ? 600 : 400 }}
-                      >
-                        <div>{kw.keyword}</div>
-                        {kw.translation && kw.translation.toLowerCase() !== kw.keyword.toLowerCase() && (
-                          <div style={{ marginTop: 2, fontSize: 10, color: S.dim, fontFamily: S.font }}>
-                            ({kw.translation})
-                          </div>
-                        )}
-                        {isMain && <span style={{ marginLeft: 6, fontSize: 9, color: S.accentSecondary, fontWeight: 700, textTransform: "uppercase" }}>główne</span>}
-                      </td>
-                      {/* Volume */}
-                      <td style={{ padding: "6px 10px", textAlign: "right", color: S.muted }}>{kw.volume > 0 ? kw.volume.toLocaleString() : "—"}</td>
-                      {keywords[0]?.cerebroScore !== undefined && <td style={{ padding: "6px 10px", textAlign: "right", color: S.muted }}>{kw.cerebroScore > 0 ? kw.cerebroScore.toFixed(1) : "—"}</td>}
-                      {keywords[0]?.organicRank !== undefined && <td style={{ padding: "6px 10px", textAlign: "right", color: S.muted }}>{kw.organicRank > 0 ? kw.organicRank : "—"}</td>}
+                      {visibleColumns.map(column => (
+                        column.col === "keyword" ? (
+                          <td
+                            key={column.col}
+                            onClick={() => toggleSecondary(kw.keyword)}
+                            style={{ padding: "6px 10px", cursor: "pointer", color: isMain ? S.accentSecondary : isSec ? S.text : S.muted, fontWeight: isMain ? 700 : isSec ? 600 : 400 }}
+                          >
+                            <div>{kw.keyword}</div>
+                            {kw.translation && kw.translation.toLowerCase() !== kw.keyword.toLowerCase() && (
+                              <div style={{ marginTop: 2, fontSize: 10, color: S.dim, fontFamily: S.font }}>
+                                ({kw.translation})
+                              </div>
+                            )}
+                            {isMain && <span style={{ marginLeft: 6, fontSize: 9, color: S.accentSecondary, fontWeight: 700, textTransform: "uppercase" }}>główne</span>}
+                          </td>
+                        ) : (
+                          <td key={column.col} style={{ padding: "6px 10px", textAlign: column.align || "left", color: S.muted }}>
+                            {formatCellValue(kw, column.col)}
+                          </td>
+                        )
+                      ))}
                     </tr>
                   );
                 })}
@@ -1139,13 +1187,29 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, setProvid
     const reader = new FileReader();
     reader.onload = async (ev) => {
       try {
+        const parseNumber = (value) => {
+          const cleaned = String(value ?? "").replace(/"/g, "").replace(/,/g, "").replace(/>/g, "").trim();
+          if (!cleaned || cleaned === "-") return undefined;
+          const parsed = Number.parseFloat(cleaned);
+          return Number.isFinite(parsed) ? parsed : undefined;
+        };
         const text = ev.target.result;
         const lines = text.split("\n").map(l => l.split(/[,;\t]/));
         const header = lines[0].map(h => h.replace(/"/g, "").trim().toLowerCase());
         const kwIdx = header.findIndex(h => h.includes("keyword") || h.includes("phrase") || h.includes("search term"));
         const volIdx = header.findIndex(h => h.includes("volume") || h.includes("search vol") || h.includes("sv"));
+        const keywordSalesIdx = header.findIndex(h => h.includes("keyword") && h.includes("sales"));
         const cerebroScoreIdx = header.findIndex(h => h.includes("cerebro") && h.includes("score") || h.includes("ciq"));
+        const titleDensityIdx = header.findIndex(h => h.includes("title") && h.includes("density"));
         const organicRankIdx = header.findIndex(h => h.includes("organic") && h.includes("rank") || h.includes("ranking"));
+        const trendIdx = header.findIndex(h => h.includes("trend"));
+        const abaClickShareIdx = header.findIndex(h => h.includes("aba") && h.includes("click"));
+        const abaConvShareIdx = header.findIndex(h => h.includes("aba") && h.includes("conv"));
+        const sponsoredAsinsIdx = header.findIndex(h => h.includes("sponsored") && h.includes("asin"));
+        const competingProductsIdx = header.findIndex(h => h.includes("competing") && h.includes("product"));
+        const matchTypeIdx = header.findIndex(h => h.includes("match") && h.includes("type"));
+        const amazonRecRankIdx = header.findIndex(h => h.includes("amazon") && h.includes("rec") && h.includes("rank"));
+        const sponsoredRankIdx = header.findIndex(h => h.includes("sponsored") && h.includes("rank"));
 
         if (kwIdx === -1) { setError("Nie znaleziono kolumny ze słowami kluczowymi w pliku CSV."); return; }
 
@@ -1154,9 +1218,19 @@ function AIGeneratePanel({ listing, setListing, marketplace, provider, setProvid
           .map(row => ({
             keyword: row[kwIdx].replace(/"/g, "").trim(),
             translation: "",
-            volume: volIdx >= 0 ? parseInt(row[volIdx]?.replace(/"/g, "").trim()) || 0 : 0,
-            cerebroScore: cerebroScoreIdx >= 0 ? parseFloat(row[cerebroScoreIdx]?.replace(/"/g, "").trim()) || 0 : 0,
-            organicRank: organicRankIdx >= 0 ? parseInt(row[organicRankIdx]?.replace(/"/g, "").trim()) || 0 : 0,
+            volume: volIdx >= 0 ? parseNumber(row[volIdx]) ?? 0 : 0,
+            keywordSales: keywordSalesIdx >= 0 ? parseNumber(row[keywordSalesIdx]) : undefined,
+            cerebroScore: cerebroScoreIdx >= 0 ? parseNumber(row[cerebroScoreIdx]) : undefined,
+            titleDensity: titleDensityIdx >= 0 ? parseNumber(row[titleDensityIdx]) : undefined,
+            organicRank: organicRankIdx >= 0 ? parseNumber(row[organicRankIdx]) : undefined,
+            searchVolumeTrend: trendIdx >= 0 ? parseNumber(row[trendIdx]) : undefined,
+            abaClickShare: abaClickShareIdx >= 0 ? parseNumber(row[abaClickShareIdx]) : undefined,
+            abaConvShare: abaConvShareIdx >= 0 ? parseNumber(row[abaConvShareIdx]) : undefined,
+            sponsoredAsins: sponsoredAsinsIdx >= 0 ? parseNumber(row[sponsoredAsinsIdx]) : undefined,
+            competingProducts: competingProductsIdx >= 0 ? parseNumber(row[competingProductsIdx]) : undefined,
+            matchType: matchTypeIdx >= 0 ? String(row[matchTypeIdx] ?? "").replace(/"/g, "").trim() || undefined : undefined,
+            amazonRecRank: amazonRecRankIdx >= 0 ? parseNumber(row[amazonRecRankIdx]) : undefined,
+            sponsoredRank: sponsoredRankIdx >= 0 ? parseNumber(row[sponsoredRankIdx]) : undefined,
           }))
           .filter(k => k.keyword.length > 0)
           .sort((a, b) => b.volume - a.volume);
