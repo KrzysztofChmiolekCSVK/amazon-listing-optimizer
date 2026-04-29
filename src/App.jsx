@@ -2459,7 +2459,7 @@ function roundFbmPrice(value) {
 }
 
 function FbmCalculator() {
-  const [copied, setCopied] = useState("");
+  const [copiedCell, setCopiedCell] = useState("");
   const [form, setForm] = useState({
     calculationMode: "profit",
     targetValue: "10",
@@ -2550,15 +2550,17 @@ function FbmCalculator() {
     return { baseCostPln, weightTier, rows };
   }, [form]);
 
-  const copyPrice = async (row) => {
-    const value = row.code === "IE" || row.code === "UK" ? row.grossPrice.toFixed(2) : row.grossPrice.toFixed(2).replace(".", ",");
+  const copyCalcValue = async (row, field) => {
+    const rawValue = row[field];
+    const value = row.code === "IE" || row.code === "UK" ? rawValue.toFixed(2) : rawValue.toFixed(2).replace(".", ",");
+    const copyKey = `${row.code}-${field}`;
     try {
       await navigator.clipboard.writeText(value);
-      setCopied(row.code);
-      setTimeout(() => setCopied(""), 1200);
+      setCopiedCell(copyKey);
+      setTimeout(() => setCopiedCell(""), 1200);
     } catch {
-      setCopied("error");
-      setTimeout(() => setCopied(""), 1200);
+      setCopiedCell("error");
+      setTimeout(() => setCopiedCell(""), 1200);
     }
   };
 
@@ -2707,16 +2709,26 @@ function FbmCalculator() {
                   <td style={{ ...tdStyle, background: "rgba(197, 92, 31, 0.09)", fontWeight: 900, color: S.accentSecondary }}>
                     <span>{formatFbmCurrency(row.grossPrice, row.currency)}</span>
                     {Number.isFinite(row.grossPrice) && (
-                      <button type="button" onClick={() => copyPrice(row)} style={{
+                      <button type="button" onClick={() => copyCalcValue(row, "grossPrice")} style={{
                         marginLeft: 8, border: `1px solid ${S.border}`, borderRadius: 7, background: S.input,
                         color: S.accentSecondary, padding: "4px 7px", fontSize: 10, fontWeight: 800, cursor: "pointer",
                       }}>
-                        {copied === row.code ? "OK" : "Copy"}
+                        {copiedCell === `${row.code}-grossPrice` ? "OK" : "Copy"}
                       </button>
                     )}
                   </td>
                   <td style={tdStyle}>{formatFbmCurrency(row.amazonFee, row.currency)}</td>
-                  <td style={{ ...tdStyle, color: row.profit >= 0 ? "#16845b" : "#b91c1c", fontWeight: 800 }}>{formatFbmCurrency(row.profit, row.currency)}</td>
+                  <td style={{ ...tdStyle, color: row.profit >= 0 ? "#16845b" : "#b91c1c", fontWeight: 800 }}>
+                    <span>{formatFbmCurrency(row.profit, row.currency)}</span>
+                    {Number.isFinite(row.profit) && (
+                      <button type="button" onClick={() => copyCalcValue(row, "profit")} style={{
+                        marginLeft: 8, border: `1px solid ${S.border}`, borderRadius: 7, background: S.input,
+                        color: row.profit >= 0 ? "#16845b" : "#b91c1c", padding: "4px 7px", fontSize: 10, fontWeight: 800, cursor: "pointer",
+                      }}>
+                        {copiedCell === `${row.code}-profit` ? "OK" : "Copy"}
+                      </button>
+                    )}
+                  </td>
                   <td style={{ ...tdStyle, color: row.margin >= 0 ? "#16845b" : "#b91c1c", fontWeight: 800 }}>{formatFbmPercent(row.margin)}</td>
                 </tr>
               ))}
