@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p .claude/skills)",
+      "Bash(curl -sL https://github.com/coreyhaines31/marketingskills/archive/main.tar.gz)",
+      "Bash(tar -xz --strip-components=2 -C .claude/skills marketingskills-main/skills/paid-ads)"
+    ]
+  }
+}
