@@ -2909,20 +2909,24 @@ function InventoryGapChecker() {
       });
 
       const thresholdValue = Math.max(0, parseLooseNumber(threshold) || 5);
-      const activeAmazonFulfillmentAsins = new Set(
-        amazonParsed
-          .filter(row => row.asin && Number.isFinite(row.quantity) && row.quantity > 0 && /amazon/i.test(row.fulfillmentChannel || ""))
-          .map(row => row.asin)
-      );
+      const asinSkuCounts = new Map();
+      const activeSiblingAsins = new Set();
+      amazonParsed.forEach(row => {
+        if (!row.asin) return;
+        asinSkuCounts.set(row.asin, (asinSkuCounts.get(row.asin) || 0) + 1);
+        if (Number.isFinite(row.quantity) && row.quantity > 0) {
+          activeSiblingAsins.add(row.asin);
+        }
+      });
 
-      const ignoredBecauseAsinActiveOnAmazon = [];
+      const ignoredBecauseAsinHasActiveSibling = [];
       const zeroAmazonRows = amazonParsed.filter(row => {
         if (!Number.isFinite(row.quantity) || row.quantity > 0) return false;
 
-        const isDefaultChannel = (row.fulfillmentChannel || "").toUpperCase() === "DEFAULT";
-        const hasActiveAmazonSibling = row.asin && activeAmazonFulfillmentAsins.has(row.asin);
-        if (isDefaultChannel && hasActiveAmazonSibling) {
-          ignoredBecauseAsinActiveOnAmazon.push(row);
+        const siblingCount = row.asin ? (asinSkuCounts.get(row.asin) || 0) : 0;
+        const hasActiveSibling = row.asin && activeSiblingAsins.has(row.asin);
+        if (siblingCount > 1 && hasActiveSibling) {
+          ignoredBecauseAsinHasActiveSibling.push(row);
           return false;
         }
         return true;
@@ -2976,7 +2980,7 @@ function InventoryGapChecker() {
       setReport({
         amazonRowsCount: amazonParsed.length,
         zeroAmazonRowsCount: zeroAmazonRows.length,
-        ignoredBecauseAsinActiveOnAmazonCount: ignoredBecauseAsinActiveOnAmazon.length,
+        ignoredBecauseAsinHasActiveSiblingCount: ignoredBecauseAsinHasActiveSibling.length,
         wmsSkuCount,
         thresholdValue,
         matches,
@@ -3129,8 +3133,8 @@ function InventoryGapChecker() {
               <div style={{ fontSize: 24, fontWeight: 800, color: "#b91c1c" }}>{report.zeroAmazonRowsCount}</div>
             </div>
             <div style={summaryCardStyle}>
-              <div style={{ fontSize: 11, color: S.dim, marginBottom: 4 }}>Pominięte: aktywne FBA</div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: S.accentSecondary }}>{report.ignoredBecauseAsinActiveOnAmazonCount}</div>
+              <div style={{ fontSize: 11, color: S.dim, marginBottom: 4 }}>Pominięte: aktywny sibling ASIN</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: S.accentSecondary }}>{report.ignoredBecauseAsinHasActiveSiblingCount}</div>
             </div>
             <div style={summaryCardStyle}>
               <div style={{ fontSize: 11, color: S.dim, marginBottom: 4 }}>Do uzupełnienia</div>
