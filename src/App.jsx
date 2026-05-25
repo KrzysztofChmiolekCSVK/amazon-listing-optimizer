@@ -261,8 +261,8 @@ const FBM_MARKETS = [
   { code: "ES", name: "Hiszpania", currency: "EUR", courier: "GLS" },
   { code: "NL", name: "Niderlandy", currency: "EUR", courier: "GLS" },
   { code: "BE", name: "Belgia", currency: "EUR", courier: "GLS" },
-  { code: "IE", name: "Irlandia", currency: "EUR", courier: "Royal Mail" },
-  { code: "UK", name: "Wielka Brytania", currency: "GBP", courier: "Royal Mail" },
+  { code: "IE", name: "Irlandia", currency: "EUR", courier: "Royal Mail (Spring)" },
+  { code: "UK", name: "Wielka Brytania", currency: "GBP", courier: "Royal Mail (Spring)" },
   { code: "PL", name: "Polska", currency: "PLN", courier: "InPost (Easy Ship)" },
   { code: "SE", name: "Szwecja", currency: "SEK", courier: "UPS" },
 ];
