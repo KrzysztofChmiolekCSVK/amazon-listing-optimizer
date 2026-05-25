@@ -2909,7 +2909,24 @@ function InventoryGapChecker() {
       });
 
       const thresholdValue = Math.max(0, parseLooseNumber(threshold) || 5);
-      const zeroAmazonRows = amazonParsed.filter(row => Number.isFinite(row.quantity) && row.quantity <= 0);
+      const activeAmazonFulfillmentAsins = new Set(
+        amazonParsed
+          .filter(row => row.asin && Number.isFinite(row.quantity) && row.quantity > 0 && /amazon/i.test(row.fulfillmentChannel || ""))
+          .map(row => row.asin)
+      );
+
+      const ignoredBecauseAsinActiveOnAmazon = [];
+      const zeroAmazonRows = amazonParsed.filter(row => {
+        if (!Number.isFinite(row.quantity) || row.quantity > 0) return false;
+
+        const isDefaultChannel = (row.fulfillmentChannel || "").toUpperCase() === "DEFAULT";
+        const hasActiveAmazonSibling = row.asin && activeAmazonFulfillmentAsins.has(row.asin);
+        if (isDefaultChannel && hasActiveAmazonSibling) {
+          ignoredBecauseAsinActiveOnAmazon.push(row);
+          return false;
+        }
+        return true;
+      });
 
       const matches = [];
       const lowStock = [];
@@ -2959,6 +2976,7 @@ function InventoryGapChecker() {
       setReport({
         amazonRowsCount: amazonParsed.length,
         zeroAmazonRowsCount: zeroAmazonRows.length,
+        ignoredBecauseAsinActiveOnAmazonCount: ignoredBecauseAsinActiveOnAmazon.length,
         wmsSkuCount,
         thresholdValue,
         matches,
@@ -3109,6 +3127,10 @@ function InventoryGapChecker() {
             <div style={summaryCardStyle}>
               <div style={{ fontSize: 11, color: S.dim, marginBottom: 4 }}>SKU 0 na Amazon</div>
               <div style={{ fontSize: 24, fontWeight: 800, color: "#b91c1c" }}>{report.zeroAmazonRowsCount}</div>
+            </div>
+            <div style={summaryCardStyle}>
+              <div style={{ fontSize: 11, color: S.dim, marginBottom: 4 }}>Pominięte: aktywne FBA</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: S.accentSecondary }}>{report.ignoredBecauseAsinActiveOnAmazonCount}</div>
             </div>
             <div style={summaryCardStyle}>
               <div style={{ fontSize: 11, color: S.dim, marginBottom: 4 }}>Do uzupełnienia</div>
