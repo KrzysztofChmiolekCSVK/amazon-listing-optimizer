@@ -231,8 +231,12 @@ const S = {
   accent: "#c55c1f", accentLight: "#f59e0b", accentSecondary: "#8e3f12",
 };
 
-const FBM_DIGITAL_SERVICES_FEE_RATE = 0.03;
-const FBM_DIGITAL_SERVICES_FEE_MARKETS = new Set(["FR", "IT", "ES"]);
+const FBM_DIGITAL_SERVICES_FEE_RATES = {
+  UK: 0.02,
+  FR: 0.03,
+  IT: 0.03,
+  ES: 0.03,
+};
 const FBM_UPS_FUEL_MARKETS = new Set(["SE"]);
 const FBM_WEIGHT_OPTIONS = [1, 2, 3, 5, 10, 15, 20, 25, 30];
 
@@ -2528,7 +2532,8 @@ function FbmCalculator() {
       const baseCost = convertPlnToCurrency(baseCostPln, market.currency);
       const shippingAmount = convertCurrency(shipping.amount, shipping.currency, market.currency);
       const totalCost = baseCost + shippingAmount;
-      const digitalFeeRate = FBM_DIGITAL_SERVICES_FEE_MARKETS.has(market.code) ? amazonFeeRate * FBM_DIGITAL_SERVICES_FEE_RATE : 0;
+      const digitalServicesMultiplier = FBM_DIGITAL_SERVICES_FEE_RATES[market.code] || 0;
+      const digitalFeeRate = amazonFeeRate * digitalServicesMultiplier;
       const totalFeeRate = amazonFeeRate + digitalFeeRate;
       const denominator = form.calculationMode === "profit"
         ? (1 / (1 + vatRate)) - totalFeeRate
@@ -2736,7 +2741,7 @@ function FbmCalculator() {
           </table>
         </div>
         <div style={{ padding: "10px 20px 14px", color: S.dim, fontSize: 10, lineHeight: 1.45 }}>
-          VAT ustawiony jest według standardowych stawek dla danego kraju. Dla części przedziałów wagowych aplikacja dobiera najbliższy wyższy dostępny próg z Twojego cennika, czyli zgodnie z logiką „do X kg”. W trybie zysku kwotowego wpisana wartość w EUR jest punktem odniesienia dla DE i jest przeliczana na GBP, PLN, SEK po ustawionych kursach. Dla Francji, Włoch i Hiszpanii prowizja Amazon zawiera też <code style={{ color: S.accentSecondary, fontFamily: S.mono }}>Digital Services Fee</code> liczone jako 3% referral fee.
+          VAT ustawiony jest według standardowych stawek dla danego kraju. Dla części przedziałów wagowych aplikacja dobiera najbliższy wyższy dostępny próg z Twojego cennika, czyli zgodnie z logiką „do X kg”. W trybie zysku kwotowego wpisana wartość w EUR jest punktem odniesienia dla DE i jest przeliczana na GBP, PLN, SEK po ustawionych kursach. Dla <code style={{ color: S.accentSecondary, fontFamily: S.mono }}>UK</code> prowizja Amazon zawiera też <code style={{ color: S.accentSecondary, fontFamily: S.mono }}>Digital Services Fee</code> liczone jako 2% referral fee, a dla <code style={{ color: S.accentSecondary, fontFamily: S.mono }}>Francji, Włoch i Hiszpanii</code> jako 3% referral fee.
         </div>
       </Card>
     </div>
