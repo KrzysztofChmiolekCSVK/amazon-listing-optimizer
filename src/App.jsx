@@ -2471,7 +2471,7 @@ function FbmCalculator() {
     eurRate: "4.2500",
     gbpRate: "4.9000",
     sekRate: "0.3900",
-    upsFuelSurcharge: "32.50",
+    upsFuelSurcharge: "33.25",
     upsDeliveryFeePln: "1.15",
   });
 
@@ -2502,7 +2502,7 @@ function FbmCalculator() {
 
     let amount = rateConfig.rates[matchedWeight];
     if (FBM_UPS_FUEL_MARKETS.has(marketCode)) {
-      amount += amount * (number("upsFuelSurcharge", 32.5) / 100) + number("upsDeliveryFeePln", 1.15);
+      amount += amount * (number("upsFuelSurcharge", 33.25) / 100) + number("upsDeliveryFeePln", 1.15);
     }
     return { matchedWeight, amount, currency: rateConfig.currency };
   };
