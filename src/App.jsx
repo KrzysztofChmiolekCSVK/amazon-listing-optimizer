@@ -271,6 +271,118 @@ const FBM_MARKETS = [
   { code: "SE", name: "Szwecja", currency: "SEK", courier: "UPS" },
 ];
 
+function normalizeHeaderKey(value = "") {
+  return String(value)
+    .replace(/^\uFEFF/, "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function detectDelimiter(line = "") {
+  const counts = [
+    { delimiter: "\t", count: (line.match(/\t/g) || []).length },
+    { delimiter: ";", count: (line.match(/;/g) || []).length },
+    { delimiter: ",", count: (line.match(/,/g) || []).length },
+  ].sort((a, b) => b.count - a.count);
+  return counts[0]?.count > 0 ? counts[0].delimiter : ",";
+}
+
+function parseDelimitedLine(line, delimiter) {
+  const result = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === delimiter && !inQuotes) {
+      result.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  result.push(current);
+  return result.map(value => value.replace(/\r/g, "").trim());
+}
+
+function parseDelimitedText(text) {
+  const normalizedText = String(text || "")
+    .replace(/^\uFEFF/, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
+  const lines = normalizedText.split("\n").filter(line => line.trim().length > 0);
+  if (!lines.length) return [];
+
+  const delimiter = detectDelimiter(lines[0]);
+  const headers = parseDelimitedLine(lines[0], delimiter);
+
+  return lines.slice(1).map(line => {
+    const values = parseDelimitedLine(line, delimiter);
+    const row = {};
+    headers.forEach((header, idx) => {
+      row[normalizeHeaderKey(header)] = values[idx] ?? "";
+    });
+    return row;
+  });
+}
+
+function parseLooseNumber(value) {
+  const cleaned = String(value ?? "")
+    .trim()
+    .replace(/\s/g, "")
+    .replace(",", ".");
+  if (!cleaned) return Number.NaN;
+  const parsed = Number.parseFloat(cleaned);
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
+}
+
+function extractSkuComponent(rawPart) {
+  let value = String(rawPart || "").trim();
+  if (!value) return null;
+
+  let multiplier = 1;
+  const multiplierMatch = value.match(/^(\d+)(?:X)?_/i);
+  if (multiplierMatch) {
+    multiplier = Number.parseInt(multiplierMatch[1], 10) || 1;
+    value = value.slice(multiplierMatch[0].length);
+  }
+
+  value = value.replace(/___[A-Z0-9-]+$/i, "");
+  value = value.replace(/(?:_\d+){2,}$/g, "");
+  value = value.trim();
+  if (!value) return null;
+
+  return {
+    sku: value.toUpperCase(),
+    multiplier,
+  };
+}
+
+function extractAmazonSkuComponents(rawSku) {
+  const skuText = String(rawSku || "").trim();
+  if (!skuText) return [];
+  return skuText
+    .split(/(?:_\+_|\+)/)
+    .map(part => extractSkuComponent(part))
+    .filter(Boolean);
+}
+
+function formatInventoryNumber(value) {
+  if (!Number.isFinite(value)) return "—";
+  if (Number.isInteger(value)) return String(value);
+  return value.toFixed(2).replace(".", ",");
+}
+
 function CharBadge({ current, max, label }) {
   const pct = (current / max) * 100;
   const color = pct > 100 ? "#ef4444" : pct > 85 ? "#f59e0b" : "#22c55e";
@@ -2748,7 +2860,292 @@ function FbmCalculator() {
   );
 }
 
-function ToolHub({ onOpenOptimizer, onOpenCalculator }) {
+function InventoryGapChecker() {
+  const [amazonFile, setAmazonFile] = useState(null);
+  const [wmsFile, setWmsFile] = useState(null);
+  const [threshold, setThreshold] = useState("5");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [report, setReport] = useState(null);
+
+  const fileBoxStyle = {
+    padding: 16,
+    borderRadius: 14,
+    border: `1px dashed ${S.border}`,
+    background: "linear-gradient(180deg, rgba(255,252,248,0.84) 0%, rgba(244,236,225,0.92) 100%)",
+  };
+
+  const runComparison = async () => {
+    if (!amazonFile || !wmsFile) {
+      setError("Wgraj raport Amazon i raport WMS, aby uruchomić porównanie.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const [amazonText, wmsText] = await Promise.all([amazonFile.text(), wmsFile.text()]);
+      const amazonRows = parseDelimitedText(amazonText);
+      const wmsRows = parseDelimitedText(wmsText);
+
+      const amazonParsed = amazonRows
+        .map(row => ({
+          sku: row.sellersku || row.sku || "",
+          asin: row.asin1 || row.asin || "",
+          fulfillmentChannel: row.fulfillmentchannel || "",
+          quantity: parseLooseNumber(row.quantity),
+        }))
+        .filter(row => row.sku);
+
+      const wmsMap = new Map();
+      let wmsSkuCount = 0;
+      wmsRows.forEach(row => {
+        const normalized = extractSkuComponent(row.sku || row.sellersku || "");
+        const stock = parseLooseNumber(row.stock);
+        if (!normalized?.sku || !Number.isFinite(stock)) return;
+        wmsSkuCount += 1;
+        wmsMap.set(normalized.sku, (wmsMap.get(normalized.sku) || 0) + stock);
+      });
+
+      const thresholdValue = Math.max(0, parseLooseNumber(threshold) || 5);
+      const zeroAmazonRows = amazonParsed.filter(row => Number.isFinite(row.quantity) && row.quantity <= 0);
+
+      const matches = [];
+      const lowStock = [];
+      const missing = [];
+
+      zeroAmazonRows.forEach(row => {
+        const components = extractAmazonSkuComponents(row.sku);
+        if (!components.length) return;
+
+        const componentStates = components.map(component => {
+          const wmsStock = wmsMap.get(component.sku);
+          const availableSets = Number.isFinite(wmsStock) ? Math.floor(wmsStock / component.multiplier) : Number.NaN;
+          return {
+            ...component,
+            wmsStock,
+            availableSets,
+          };
+        });
+
+        const allFound = componentStates.every(component => Number.isFinite(component.wmsStock));
+        const bundleStock = allFound ? Math.min(...componentStates.map(component => component.availableSets)) : Number.NaN;
+
+        const entry = {
+          amazonSku: row.sku,
+          asin: row.asin,
+          fulfillmentChannel: row.fulfillmentChannel || "—",
+          amazonQty: row.quantity,
+          componentStates,
+          bundleStock,
+          isBundle: componentStates.length > 1 || componentStates.some(component => component.multiplier > 1),
+        };
+
+        if (!allFound) {
+          missing.push(entry);
+        } else if (bundleStock > thresholdValue) {
+          matches.push(entry);
+        } else {
+          lowStock.push(entry);
+        }
+      });
+
+      const sortByBundleStock = (a, b) => (b.bundleStock - a.bundleStock) || a.amazonSku.localeCompare(b.amazonSku);
+      matches.sort(sortByBundleStock);
+      lowStock.sort(sortByBundleStock);
+      missing.sort((a, b) => a.amazonSku.localeCompare(b.amazonSku));
+
+      setReport({
+        amazonRowsCount: amazonParsed.length,
+        zeroAmazonRowsCount: zeroAmazonRows.length,
+        wmsSkuCount,
+        thresholdValue,
+        matches,
+        lowStock,
+        missing,
+      });
+    } catch (err) {
+      setError(err.message || "Nie udało się porównać raportów.");
+      setReport(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const summaryCardStyle = {
+    padding: "12px 14px",
+    borderRadius: 12,
+    background: S.card2,
+    border: `1px solid ${S.border}`,
+  };
+
+  const renderResultTable = (rows, emptyText) => (
+    rows.length ? (
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1100 }}>
+          <thead style={{ background: "rgba(197, 92, 31, 0.08)" }}>
+            <tr>
+              {["Amazon SKU", "ASIN", "Kanał", "Stan Amazon", "SKU z WMS", "Stan WMS", "Mnożnik", "Możliwe komplety"].map(head => (
+                <th key={head} style={{ padding: "8px 10px", textAlign: "left", color: S.accentSecondary, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${S.border}` }}>
+                  {head}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(row => (
+              <tr key={`${row.amazonSku}-${row.fulfillmentChannel}-${row.asin}`}>
+                <td style={{ padding: "9px 10px", borderBottom: `1px solid rgba(84,61,28,0.10)`, fontSize: 12, fontWeight: 700 }}>{row.amazonSku}</td>
+                <td style={{ padding: "9px 10px", borderBottom: `1px solid rgba(84,61,28,0.10)`, fontSize: 12, fontFamily: S.mono }}>{row.asin || "—"}</td>
+                <td style={{ padding: "9px 10px", borderBottom: `1px solid rgba(84,61,28,0.10)`, fontSize: 12 }}>{row.fulfillmentChannel}</td>
+                <td style={{ padding: "9px 10px", borderBottom: `1px solid rgba(84,61,28,0.10)`, fontSize: 12, fontWeight: 700, color: row.amazonQty <= 0 ? "#b91c1c" : S.text }}>
+                  {formatInventoryNumber(row.amazonQty)}
+                </td>
+                <td style={{ padding: "9px 10px", borderBottom: `1px solid rgba(84,61,28,0.10)`, fontSize: 12 }}>
+                  {row.componentStates.map(component => component.sku).join(" + ")}
+                </td>
+                <td style={{ padding: "9px 10px", borderBottom: `1px solid rgba(84,61,28,0.10)`, fontSize: 12 }}>
+                  {row.componentStates.map(component => Number.isFinite(component.wmsStock) ? formatInventoryNumber(component.wmsStock) : "brak").join(" / ")}
+                </td>
+                <td style={{ padding: "9px 10px", borderBottom: `1px solid rgba(84,61,28,0.10)`, fontSize: 12 }}>
+                  {row.componentStates.map(component => `x${component.multiplier}`).join(" / ")}
+                </td>
+                <td style={{ padding: "9px 10px", borderBottom: `1px solid rgba(84,61,28,0.10)`, fontSize: 12, fontWeight: 800, color: Number.isFinite(row.bundleStock) && row.bundleStock > report.thresholdValue ? "#16845b" : "#b45309" }}>
+                  {Number.isFinite(row.bundleStock) ? formatInventoryNumber(row.bundleStock) : "brak"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    ) : (
+      <div style={{ padding: 18, color: S.dim, fontSize: 13 }}>{emptyText}</div>
+    )
+  );
+
+  return (
+    <div style={{ animation: "fadeIn 0.3s ease" }}>
+      <div style={{ marginBottom: 18, padding: "10px 0 8px", display: "grid", gap: 6 }}>
+        <SectionLabel>Kontrola stanów</SectionLabel>
+        <h2 style={{ margin: 0, color: S.text, fontSize: 28, lineHeight: 1.08 }}>Amazon 0 vs WMS</h2>
+        <div style={{ maxWidth: 880, color: S.muted, fontSize: 13, lineHeight: 1.55 }}>
+          Moduł wykrywa SKU wyzerowane w raporcie Amazon i sprawdza, czy w raporcie WMS istnieją zasoby większe niż wskazany próg. Obsługuje multipaki typu <code style={{ color: S.accentSecondary, fontFamily: S.mono }}>2X_SKU</code>, końcówki <code style={{ color: S.accentSecondary, fontFamily: S.mono }}>___FBA</code> oraz zestawy złożone z wielu SKU.
+        </div>
+      </div>
+
+      <Card style={{ marginBottom: 18 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) 180px", gap: 14, alignItems: "end" }}>
+          <div style={fileBoxStyle}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: S.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+              Raport Amazon
+            </div>
+            <input
+              type="file"
+              accept=".txt,.tsv,.csv"
+              onChange={e => setAmazonFile(e.target.files?.[0] || null)}
+              style={{ width: "100%", fontFamily: S.font }}
+            />
+            <div style={{ marginTop: 8, fontSize: 11, color: S.dim }}>
+              Potrzebne kolumny: <code style={{ color: S.accentSecondary, fontFamily: S.mono }}>seller-sku</code>, <code style={{ color: S.accentSecondary, fontFamily: S.mono }}>asin1</code>, <code style={{ color: S.accentSecondary, fontFamily: S.mono }}>quantity</code>, <code style={{ color: S.accentSecondary, fontFamily: S.mono }}>fulfillment-channel</code>.
+            </div>
+            {amazonFile && <div style={{ marginTop: 8, fontSize: 12, color: S.text, fontWeight: 600 }}>{amazonFile.name}</div>}
+          </div>
+
+          <div style={fileBoxStyle}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: S.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+              Raport WMS
+            </div>
+            <input
+              type="file"
+              accept=".csv,.txt"
+              onChange={e => setWmsFile(e.target.files?.[0] || null)}
+              style={{ width: "100%", fontFamily: S.font }}
+            />
+            <div style={{ marginTop: 8, fontSize: 11, color: S.dim }}>
+              Potrzebne kolumny: <code style={{ color: S.accentSecondary, fontFamily: S.mono }}>Sku</code> i <code style={{ color: S.accentSecondary, fontFamily: S.mono }}>Stock</code>.
+            </div>
+            {wmsFile && <div style={{ marginTop: 8, fontSize: 12, color: S.text, fontWeight: 600 }}>{wmsFile.name}</div>}
+          </div>
+
+          <div>
+            <Field
+              label="Próg stocku WMS"
+              value={threshold}
+              onChange={setThreshold}
+              type="number"
+              helper="Pokaż tylko pozycje z liczbą możliwych kompletów powyżej tej wartości."
+            />
+            <button
+              type="button"
+              onClick={runComparison}
+              style={{
+                width: "100%",
+                marginTop: 2,
+                padding: "12px 14px",
+                borderRadius: 10,
+                border: "none",
+                background: loading ? S.border : `linear-gradient(135deg, ${S.accent}, #e88800)`,
+                color: "#fffaf3",
+                fontWeight: 800,
+                cursor: loading ? "wait" : "pointer",
+                fontFamily: S.font,
+              }}
+            >
+              {loading ? "Analizuję raporty..." : "Porównaj raporty"}
+            </button>
+          </div>
+        </div>
+        {error && <div style={{ marginTop: 14, color: "#b91c1c", fontSize: 13, fontWeight: 700 }}>{error}</div>}
+      </Card>
+
+      {report && (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 12, marginBottom: 18 }}>
+            <div style={summaryCardStyle}>
+              <div style={{ fontSize: 11, color: S.dim, marginBottom: 4 }}>Wiersze Amazon</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: S.text }}>{report.amazonRowsCount}</div>
+            </div>
+            <div style={summaryCardStyle}>
+              <div style={{ fontSize: 11, color: S.dim, marginBottom: 4 }}>SKU 0 na Amazon</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: "#b91c1c" }}>{report.zeroAmazonRowsCount}</div>
+            </div>
+            <div style={summaryCardStyle}>
+              <div style={{ fontSize: 11, color: S.dim, marginBottom: 4 }}>Do uzupełnienia</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: "#16845b" }}>{report.matches.length}</div>
+            </div>
+            <div style={summaryCardStyle}>
+              <div style={{ fontSize: 11, color: S.dim, marginBottom: 4 }}>Za niski stan / brak dopasowania</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: S.accentSecondary }}>{report.lowStock.length + report.missing.length}</div>
+            </div>
+          </div>
+
+          <Card style={{ padding: 0, overflow: "hidden", marginBottom: 16 }}>
+            <div style={{ padding: "18px 20px 8px", display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+              <h3 style={{ margin: 0, color: S.text, fontSize: 16 }}>SKU do uzupełnienia</h3>
+              <span style={{ color: S.dim, fontSize: 12 }}>
+                Pokazuję tylko pozycje z Amazon = 0 i liczbą możliwych kompletów w WMS &gt; {formatInventoryNumber(report.thresholdValue)}.
+              </span>
+            </div>
+            {renderResultTable(report.matches, "Brak pozycji spełniających warunek.")}
+          </Card>
+
+          <Card style={{ padding: 0, overflow: "hidden" }}>
+            <div style={{ padding: "18px 20px 8px", display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+              <h3 style={{ margin: 0, color: S.text, fontSize: 16 }}>Pozostałe wyzerowane SKU</h3>
+              <span style={{ color: S.dim, fontSize: 12 }}>
+                Tutaj trafiają pozycje z brakującym dopasowaniem w WMS albo zbyt małą liczbą możliwych kompletów.
+              </span>
+            </div>
+            {renderResultTable([...report.lowStock, ...report.missing], "Wszystkie wyzerowane SKU mają wystarczający stan w WMS.")}
+          </Card>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ToolHub({ onOpenOptimizer, onOpenCalculator, onOpenInventory }) {
   const tools = [
     {
       title: "Generator listingów",
@@ -2763,6 +3160,13 @@ function ToolHub({ onOpenOptimizer, onOpenCalculator }) {
       text: "Kalkulator ceny, kosztów i marży dla sprzedaży Amazon FBM.",
       action: "Otwórz kalkulator",
       onClick: onOpenCalculator,
+    },
+    {
+      title: "Amazon 0 vs WMS",
+      tag: "Kontrola stanów",
+      text: "Porównanie raportu All Listings z raportem WMS i wykrywanie SKU wyzerowanych na Amazon przy dodatnim stocku lokalnym.",
+      action: "Otwórz kontrolę stanów",
+      onClick: onOpenInventory,
     },
   ];
 
@@ -2892,16 +3296,19 @@ export default function App() {
           <TabBtn active={activeTool === "home"} onClick={() => setActiveTool("home")} icon="⌂">Narzędzia</TabBtn>
           <TabBtn active={activeTool === "optimizer"} onClick={() => setActiveTool("optimizer")} icon="⚡">Generator listingów</TabBtn>
           <TabBtn active={activeTool === "calculator"} onClick={() => setActiveTool("calculator")} icon="🧮">Kalkulator FBM</TabBtn>
+          <TabBtn active={activeTool === "inventory"} onClick={() => setActiveTool("inventory")} icon="📦">Amazon 0 vs WMS</TabBtn>
         </div>
 
         {activeTool === "home" && (
           <ToolHub
             onOpenOptimizer={() => setActiveTool("optimizer")}
             onOpenCalculator={() => setActiveTool("calculator")}
+            onOpenInventory={() => setActiveTool("inventory")}
           />
         )}
 
         {activeTool === "calculator" && <FbmCalculator />}
+        {activeTool === "inventory" && <InventoryGapChecker />}
 
         <div style={{ display: activeTool === "optimizer" ? "" : "none" }}>
         {/* MARKETPLACE */}
