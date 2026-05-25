@@ -233,8 +233,8 @@ const S = {
 
 const FBM_DIGITAL_SERVICES_FEE_RATE = 0.03;
 const FBM_DIGITAL_SERVICES_FEE_MARKETS = new Set(["FR", "IT", "ES"]);
-const FBM_UPS_FUEL_MARKETS = new Set(["UK", "IE", "SE"]);
-const FBM_WEIGHT_OPTIONS = [1, 2, 3, 5, 10, 15, 20, 25, 30, 40];
+const FBM_UPS_FUEL_MARKETS = new Set(["SE"]);
+const FBM_WEIGHT_OPTIONS = [1, 2, 3, 5, 10, 15, 20, 25, 30];
 
 const FBM_VAT_RATES = {
   DE: 0.19, FR: 0.2, IT: 0.22, ES: 0.21, NL: 0.21,
@@ -242,16 +242,16 @@ const FBM_VAT_RATES = {
 };
 
 const FBM_SHIPPING_RATES = {
-  FR: { currency: "EUR", rates: { 1: 5.65, 2: 5.87, 3: 6.31, 5: 9.2, 10: 11.82, 15: 12.85, 25: 12.85, 30: 15.75, 40: 16.54 } },
-  ES: { currency: "EUR", rates: { 1: 5.99, 2: 5.99, 3: 6.81, 5: 8.1, 10: 14.73, 15: 19.94, 25: 20.88, 30: 21.34, 40: 29.14 } },
-  NL: { currency: "EUR", rates: { 1: 5, 2: 5, 3: 5, 5: 8.07, 10: 8.44, 15: 10.46, 25: 11.8, 30: 12.38, 40: 15.87 } },
-  DE: { currency: "EUR", rates: { 1: 3.8, 2: 4.1, 3: 4.1, 5: 5.6, 10: 5.89, 15: 7.18, 25: 7.18, 30: 7.18, 40: 7.18 } },
+  FR: { currency: "EUR", rates: { 1: 5.65, 2: 5.87, 3: 6.31, 5: 9.2, 10: 11.82, 15: 12.85, 25: 12.85, 30: 15.75 } },
+  ES: { currency: "EUR", rates: { 1: 5.99, 2: 5.99, 3: 6.81, 5: 8.1, 10: 14.73, 15: 19.94, 25: 20.88, 30: 21.34 } },
+  NL: { currency: "EUR", rates: { 1: 5, 2: 5, 3: 5, 5: 8.07, 10: 8.44, 15: 10.46, 25: 11.8, 30: 12.38 } },
+  DE: { currency: "EUR", rates: { 1: 3.8, 2: 4.1, 3: 4.1, 5: 5.6, 10: 5.89, 15: 7.18, 25: 7.18, 30: 7.18 } },
   SE: { currency: "PLN", rates: { 1: 20.96, 3: 20.96, 5: 24.24, 10: 31.34, 20: 40.4, 30: 46.33 } },
-  IT: { currency: "EUR", rates: { 1: 6.21, 2: 6.21, 3: 6.35, 5: 10.41, 10: 10.68, 15: 12.37, 25: 12.37, 30: 12.37, 40: 19.49 } },
-  BE: { currency: "EUR", rates: { 1: 4.76, 2: 4.76, 3: 4.76, 5: 8.07, 10: 8.44, 15: 10.46, 25: 11.8, 30: 12.38, 40: 15.87 } },
-  IE: { currency: "PLN", rates: { 1: 28.36, 3: 28.36, 5: 28.36, 10: 32.26, 20: 40.77, 30: 47.4 } },
-  UK: { currency: "PLN", rates: { 1: 55.46, 3: 55.46, 5: 55.46, 10: 65.18, 20: 79.06, 30: 90.72 } },
-  PL: { currency: "PLN", rates: { 1: 5, 2: 5, 3: 5, 5: 5, 10: 5, 15: 5, 20: 5, 25: 5, 30: 5, 40: 5 } },
+  IT: { currency: "EUR", rates: { 1: 6.21, 2: 6.21, 3: 6.35, 5: 10.41, 10: 10.68, 15: 12.37, 25: 12.37, 30: 12.37 } },
+  BE: { currency: "EUR", rates: { 1: 4.76, 2: 4.76, 3: 4.76, 5: 8.07, 10: 8.44, 15: 10.46, 25: 11.8, 30: 12.38 } },
+  IE: { currency: "EUR", rates: { 1: 4.86, 2: 5.71, 3: 6.46, 5: 8.2, 10: 12.27, 15: 16.34, 20: 20.77, 25: 25.02, 30: 29.28 } },
+  UK: { currency: "EUR", rates: { 1: 4.86, 2: 5.71, 3: 6.46, 5: 8.2, 10: 12.27, 15: 16.34, 20: 20.77, 25: 25.02, 30: 29.28 } },
+  PL: { currency: "PLN", rates: { 1: 5, 2: 5, 3: 5, 5: 5, 10: 5, 15: 5, 20: 5, 25: 5, 30: 5 } },
 };
 
 const FBM_MARKETS = [
@@ -261,8 +261,8 @@ const FBM_MARKETS = [
   { code: "ES", name: "Hiszpania", currency: "EUR", courier: "GLS" },
   { code: "NL", name: "Niderlandy", currency: "EUR", courier: "GLS" },
   { code: "BE", name: "Belgia", currency: "EUR", courier: "GLS" },
-  { code: "IE", name: "Irlandia", currency: "EUR", courier: "UPS" },
-  { code: "UK", name: "Wielka Brytania", currency: "GBP", courier: "UPS" },
+  { code: "IE", name: "Irlandia", currency: "EUR", courier: "Royal Mail" },
+  { code: "UK", name: "Wielka Brytania", currency: "GBP", courier: "Royal Mail" },
   { code: "PL", name: "Polska", currency: "PLN", courier: "InPost (Easy Ship)" },
   { code: "SE", name: "Szwecja", currency: "SEK", courier: "UPS" },
 ];
@@ -2605,7 +2605,7 @@ function FbmCalculator() {
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <span style={pillStyle}>Koszty w PLN</span>
             <span style={pillStyle}>Kursy EUR / GBP / SEK</span>
-            <span style={pillStyle}>UPS: paliwo + doręczenie</span>
+            <span style={pillStyle}>UPS (SE): paliwo + doręczenie</span>
             <span style={pillStyle}>Zysk po VAT i opłatach</span>
             <span style={pillStyle}>Brutto zaokrąglane do .49 / .99</span>
           </div>
@@ -2736,7 +2736,7 @@ function FbmCalculator() {
           </table>
         </div>
         <div style={{ padding: "10px 20px 14px", color: S.dim, fontSize: 10, lineHeight: 1.45 }}>
-          VAT ustawiony jest według standardowych stawek dla danego kraju. Dla UK i części przedziałów wagowych aplikacja dobiera najbliższy wyższy dostępny próg z Twojego cennika, czyli zgodnie z logiką „do X kg”. W trybie zysku kwotowego wpisana wartość w EUR jest punktem odniesienia dla DE i jest przeliczana na GBP, PLN, SEK po ustawionych kursach. Dla Francji, Włoch i Hiszpanii prowizja Amazon zawiera też <code style={{ color: S.accentSecondary, fontFamily: S.mono }}>Digital Services Fee</code> liczone jako 3% referral fee.
+          VAT ustawiony jest według standardowych stawek dla danego kraju. Dla części przedziałów wagowych aplikacja dobiera najbliższy wyższy dostępny próg z Twojego cennika, czyli zgodnie z logiką „do X kg”. W trybie zysku kwotowego wpisana wartość w EUR jest punktem odniesienia dla DE i jest przeliczana na GBP, PLN, SEK po ustawionych kursach. Dla Francji, Włoch i Hiszpanii prowizja Amazon zawiera też <code style={{ color: S.accentSecondary, fontFamily: S.mono }}>Digital Services Fee</code> liczone jako 3% referral fee.
         </div>
       </Card>
     </div>
